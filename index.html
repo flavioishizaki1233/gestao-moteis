@@ -164,7 +164,7 @@ table.adm{font-size:13px;width:100%}
       <label class="f" for="selFase">Carga semanal<select id="selFase">
         <option value="auto">Automática pela data</option>
         <option value="44">44h (regra anterior)</option>
-        <option value="42">42h (a partir de 15/12/2026)</option>
+        <option value="42">42h (a partir de 01/12/2026)</option>
         <option value="40">40h (a partir de 15/12/2027)</option>
       </select></label>
       <button id="btnSalvar" class="primary" type="button">Salvar escala</button>
@@ -243,7 +243,7 @@ table.adm{font-size:13px;width:100%}
       <summary>Regras usadas pelo gerador</summary>
       <ul>
         <li><b>12x36:</b> 12h de permanência com 1h de intervalo (11h trabalhadas) e 36h de folga. Não pode emendar dois turnos nem fazer hora extra; domingos e feriados já estão compensados pelo próprio regime (art. 59-A da CLT). <span class="src">Minuta ACT, cláusula 3ª; CCT, cláusula 33ª.</span></li>
-        <li><b>5x2:</b> a partir de 15/12/2026, 42h semanais: 8h24 trabalhadas + 1h de intervalo (9h24 na empresa). A partir de 15/12/2027, 40h: 8h + 1h. Duas folgas por semana em rodízio. Jornada noturna de 7h com 1h de intervalo (ex.: 00h às 07h). <span class="src">Minuta ACT, cláusula 5ª.</span></li>
+        <li><b>5x2:</b> a partir de 01/12/2026, 42h semanais (a empresa antecipou a data de 15/12 prevista na minuta): 8h24 trabalhadas + 1h de intervalo (9h24 na empresa). A partir de 15/12/2027, 40h: 8h + 1h. Duas folgas por semana em rodízio. Jornada noturna de 7h com 1h de intervalo (ex.: 00h às 07h). <span class="src">Minuta ACT, cláusula 5ª.</span></li>
         <li><b>6x1:</b> com 42h fica 7h por dia + 1h de intervalo. Pelo texto aprovado da PEC 221/2019, um regime diferente do 5x2 só vale com acordo ou convenção coletiva e precisa garantir, na média do mês, duas folgas por semana, com pelo menos uma dentro de cada semana. O 6x1 puro não atende isso, então o gerador sempre mostra um alerta. <span class="src">Resumo PEC 221/2019 (Mattos Neves Advocacia).</span></li>
         <li><b>Domingos:</b> mulheres folgam pelo menos um domingo a cada 15 dias. Homens folgam pelo menos um domingo a cada 3 semanas (critério da Lei 10.101/2000, art. 6º, citada na minuta). Vale para 5x2 e 6x1. <span class="src">Minuta ACT, cláusula 5ª, "g"; cláusula 6ª.</span></li>
         <li><b>Descanso semanal:</b> no máximo 6 dias seguidos de trabalho. O horário de entrada de cada pessoa é fixo no mês, então o intervalo de 11h entre jornadas fica garantido.</li>
@@ -342,7 +342,7 @@ function parseHM(s){const [a,b]=(s||"07:00").split(":").map(Number);return a+(b|
 function faseDia(n){
   if(S.fase!=="auto") return Number(S.fase);
   const s=iso(n);
-  if(s<"2026-12-15") return 44;
+  if(s<"2026-12-01") return 44;
   if(s<"2027-12-15") return 42;
   return 40;
 }
@@ -544,7 +544,7 @@ function renderFase(R){
   const f1=faseDia(R.a), f2=faseDia(R.b);
   const mes=MES_NOME[R.m]+"/"+R.y;
   let h=`<span class="pill acc">${esc(mes)}</span>`;
-  if(f1!==f2) h+=`<span>Dias 1 a 14: <b>${f1}h</b> semanais. A partir de 15/${String(R.m+1).padStart(2,"0")}: <b>${f2}h</b> semanais (5x2 com 8h24 + 1h de intervalo).</span>`;
+  if(f1!==f2) h+=`<span>Início do mês: <b>${f1}h</b> semanais. A partir de 15/${String(R.m+1).padStart(2,"0")}: <b>${f2}h</b> semanais.</span>`;
   else h+=`<span>Carga semanal no mês: <b>${f1}h</b>${f1===42?" (5x2 com 8h24 + 1h de intervalo)":f1===40?" (5x2 com 8h + 1h de intervalo)":""}.</span>`;
   if(S.fase!=="auto") h+=`<span class="pill warn">carga escolhida manualmente</span>`;
   $("faseInfo").innerHTML=h;
