@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gerador de Escala dos Motéis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* Layout: barra de controle no topo, resumo de alertas, grade do mês por cargo, cobertura x demanda, equipe e regras. */
+:root{
+  --bg:#f5f4f2; --panel:#ffffff; --ink:#1f1d22; --muted:#6c6772; --line:#e2dfe4;
+  --accent:#8a2b4b; --accent-soft:#f3e6eb;
+  --bad:#c23a2b; --bad-soft:#fbe5e1; --warn:#b7791f; --warn-soft:#fbf0dc;
+  --ok:#2f7d4f; --ok-soft:#e2f2e8; --info:#2d5f99; --info-soft:#e3ecf7;
+  --folga:#ece9ee; --sun:#faf3f5;
+  --display:"Archivo",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#17151a; --panel:#211e25; --ink:#ece8ef; --muted:#a29ca8; --line:#36313b;
+  --accent:#e07a9e; --accent-soft:#3a2430;
+  --bad:#ff7a6b; --bad-soft:#47231f; --warn:#e9b04f; --warn-soft:#3d3020; --ok:#6cc68f; --ok-soft:#1f3a2a; --info:#7fb0ef; --info-soft:#1f2d42;
+  --folga:#2b2730; --sun:#2a2026; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#17151a; --panel:#211e25; --ink:#ece8ef; --muted:#a29ca8; --line:#36313b;
+  --accent:#e07a9e; --accent-soft:#3a2430;
+  --bad:#ff7a6b; --bad-soft:#47231f; --warn:#e9b04f; --warn-soft:#3d3020; --ok:#6cc68f; --ok-soft:#1f3a2a; --info:#7fb0ef; --info-soft:#1f2d42;
+  --folga:#2b2730; --sun:#2a2026; color-scheme:dark;}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--body);padding:20px clamp(16px,3vw,32px) 48px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
+h1{font-size:24px;font-weight:800;letter-spacing:-.01em}
+h2{font-size:17px;font-weight:700}
+h3{font-size:14px;font-weight:700}
+.sub{color:var(--muted)}
+.wrap{max-width:1400px;margin:0 auto;display:grid;gap:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
+label.f{display:grid;gap:4px;font-size:12px;color:var(--muted);font-weight:500}
+select,input[type=month],input[type=time],input[type=number],input[type=text]{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 8px;min-height:34px}
+input[type=number]{width:80px}
+button{font:inherit;font-weight:600;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 12px;cursor:pointer;min-height:34px}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.small{padding:3px 8px;min-height:26px;font-size:12px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:end}
+.status{font-size:12px;color:var(--muted)}
+.status b{color:var(--ink)}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tab{border-radius:999px;padding:6px 14px;font-weight:600}
+.tab[aria-selected="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+.tab .n{opacity:.7;font-weight:500;margin-left:4px}
+.fase{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.info{background:var(--info-soft);color:var(--info)}
+.pill.acc{background:var(--accent-soft);color:var(--accent)}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;font-variant-numeric:tabular-nums}
+table.esc{font-size:12px;min-width:100%}
+.esc th,.esc td{border-bottom:1px solid var(--line);padding:0;text-align:center;height:32px}
+.esc thead th{font-weight:600;color:var(--muted);font-size:11px;padding:4px 0;line-height:1.15;min-width:30px;position:sticky;top:0;background:var(--panel)}
+.esc thead th.dom{color:var(--accent)}
+.esc thead th.fer{color:var(--bad)}
+.esc th.nm{text-align:left;padding:0 10px 0 0;min-width:170px;position:sticky;left:0;background:var(--panel);z-index:1}
+.esc th.nm .r{display:block;font-weight:400;color:var(--muted);font-size:11px}
+.esc td.c{cursor:pointer;font-family:var(--mono);font-size:11px;border-left:1px solid var(--line)}
+.esc td.c.dom{background:var(--sun)}
+.esc td.c.w{color:var(--ink)}
+.esc td.c.f{background:var(--folga);color:var(--muted)}
+.esc td.c.x{background:var(--info-soft);color:var(--info)}
+.esc td.c.man{box-shadow:inset 0 -3px 0 var(--accent)}
+.esc td.c.err{box-shadow:inset 0 0 0 2px var(--bad)}
+.esc td.c:hover{outline:2px solid var(--accent);outline-offset:-2px}
+.esc td.sum{padding:0 8px;font-size:12px;white-space:nowrap;border-left:1px solid var(--line)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);align-items:center}
+.sw{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;border:1px solid var(--line)}
+.alerts{display:grid;gap:6px;max-height:340px;overflow:auto}
+.al{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start;font-size:13px;padding:6px 8px;border-radius:6px;border-left:3px solid var(--line)}
+.al.bad{border-color:var(--bad);background:var(--bad-soft)} .al.warn{border-color:var(--warn);background:var(--warn-soft)} .al.info{border-color:var(--info);background:var(--info-soft)}
+.al .who{font-weight:600}
+table.heat{font-size:11px}
+.heat th{font-weight:600;color:var(--muted);padding:2px 0;min-width:26px}
+.heat th.d{text-align:left;padding-right:8px;min-width:38px}
+.heat td{min-width:34px;padding:0 2px;height:26px;text-align:center;font-family:var(--mono);border:1px solid var(--panel)}
+.heat td.lack{background:var(--bad-soft);color:var(--bad);font-weight:700}
+.heat td.tight{background:var(--warn-soft);color:var(--warn)}
+.heat td.good{background:var(--ok-soft);color:var(--ok)}
+.heat td.over{background:var(--info-soft);color:var(--info)}
+.heat td.none{color:var(--muted)}
+.sug{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.sug li{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;font-size:13px}
+.sug .t{font-weight:600}
+.empty{padding:18px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);font-size:13px}
+table.team{font-size:13px;width:100%}
+.team th{text-align:left;font-size:11px;color:var(--muted);font-weight:600;padding:6px 6px;border-bottom:1px solid var(--line)}
+.team td{padding:4px 6px;border-bottom:1px solid var(--line)}
+.team input[type=text]{width:150px}
+.team select,.team input{min-height:30px;padding:3px 6px}
+details.rules summary{cursor:pointer;font-family:var(--display);font-weight:700;font-size:15px}
+.rules ul{margin:8px 0 0;padding-left:18px;display:grid;gap:5px;max-width:95ch}
+.rules .src{color:var(--muted);font-size:12px}
+.note{font-size:12px;color:var(--muted)}
+.kpis{display:flex;flex-wrap:wrap;gap:20px}
+.kpi .v{font-family:var(--display);font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:12px;color:var(--muted)}
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.on{opacity:1}
+textarea#copyBox{width:100%;height:120px;font:12px var(--mono);display:none;margin-top:8px}
+.login{max-width:420px;margin:8vh auto;display:grid;gap:12px}
+.login input{width:100%}
+.login .msg{font-size:13px;min-height:1.2em}
+.login .msg.err{color:var(--bad)}
+.who{font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center;justify-content:flex-end}
+table.adm{font-size:13px;width:100%}
+.adm th{text-align:left;font-size:11px;color:var(--muted);padding:6px;border-bottom:1px solid var(--line)}
+.adm td{padding:6px;border-bottom:1px solid var(--line)}
+@media print{
+  body{background:#fff;color:#000;padding:0}
+  .noprint,#tabs,#rules,#toast{display:none!important}
+  .panel{border:none;padding:0}
+  .esc td.c.f{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  @page{size:A4 landscape;margin:10mm}
+}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+<section class="panel login" id="loginBox" hidden>
+  <h1>Gerador de Escala</h1>
+  <div class="sub">Entre com o e-mail e a senha da sua conta.</div>
+  <form id="loginForm" class="login" style="margin:0">
+    <label class="f" for="lgEmail">E-mail<input type="text" id="lgEmail" autocomplete="username" inputmode="email" required></label>
+    <label class="f" for="lgSenha">Senha<input type="password" id="lgSenha" autocomplete="current-password" minlength="6" required style="font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 8px;min-height:34px"></label>
+    <div class="row"><button class="primary" type="submit" id="lgEntrar">Entrar</button><button type="button" id="lgCriar">Criar conta</button><button type="button" id="lgEsqueci">Esqueci a senha</button></div>
+    <div class="msg" id="lgMsg" role="status"></div>
+  </form>
+</section>
+<section class="panel login" id="semAcesso" hidden>
+  <h2>Conta sem acesso liberado</h2>
+  <div class="sub">Você entrou como <b id="saEmail"></b>, mas ainda não tem nenhum motel liberado. Peça ao administrador para liberar o seu motel e depois atualize esta página.</div>
+  <div class="row"><button type="button" id="saSair">Sair</button></div>
+</section>
+<div class="wrap" id="app" hidden>
+  <header class="head">
+    <div>
+      <h1>Gerador de Escala</h1>
+      <div class="sub" id="subtitle">Escala mensal por cargo, com as regras de transição da jornada e a demanda de limpeza do Motel+.</div>
+    </div>
+    <div style="display:grid;gap:4px;justify-items:end"><div class="who noprint"><span id="userEmail"></span><button class="small" type="button" id="btnSair">Sair</button></div><div class="status" id="saveStatus">Carregando…</div></div>
+  </header>
+
+  <section class="panel noprint" aria-label="Controles">
+    <div class="row">
+      <label class="f" for="selMotel">Motel<select id="selMotel"></select></label>
+      <label class="f" for="selMes">Mês<input type="month" id="selMes"></label>
+      <label class="f" for="selFase">Carga semanal<select id="selFase">
+        <option value="auto">Automática pela data</option>
+        <option value="44">44h (regra anterior)</option>
+        <option value="42">42h (a partir de 15/12/2026)</option>
+        <option value="40">40h (a partir de 15/12/2027)</option>
+      </select></label>
+      <button id="btnSalvar" class="primary" type="button">Salvar escala</button>
+      <button id="btnRegerar" type="button">Refazer folgas automáticas</button>
+      <button id="btnCopiar" type="button">Copiar para Excel</button>
+      <button id="btnImprimir" type="button">Imprimir</button>
+    </div>
+    <div class="fase" id="faseInfo" style="margin-top:12px"></div>
+    <textarea id="copyBox" aria-label="Escala em texto para colar no Excel" readonly></textarea>
+  </section>
+
+  <nav class="tabs noprint" id="tabs" aria-label="Cargos"></nav>
+
+  <section class="panel noprint" aria-label="Resumo">
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section class="panel">
+    <div class="head" style="margin-bottom:10px">
+      <h2 id="gridTitle">Escala</h2>
+      <div class="legend noprint">
+        <span><span class="sw" style="background:var(--panel)"></span>Trabalho (hora de entrada)</span>
+        <span><span class="sw" style="background:var(--folga)"></span>F = folga</span>
+        <span><span class="sw" style="background:var(--info-soft)"></span>FE = férias/afastamento</span>
+        <span><span class="sw" style="box-shadow:inset 0 -3px 0 var(--accent)"></span>ajuste manual</span>
+        <span>Clique num dia para trocar: trabalho → folga → férias → automático</span>
+      </div>
+    </div>
+    <div class="scroll" id="gridWrap"></div>
+  </section>
+
+  <div class="grid2 noprint">
+    <section class="panel">
+      <h2 style="margin-bottom:10px">Alertas das regras</h2>
+      <div class="alerts" id="alerts"></div>
+    </section>
+    <section class="panel">
+      <h2 style="margin-bottom:4px" id="sugTitle">Sugestões de quadro</h2>
+      <div class="note" id="sugNote" style="margin-bottom:10px"></div>
+      <ul class="sug" id="sugs"></ul>
+    </section>
+  </div>
+
+  <section class="panel noprint">
+    <div class="head" style="margin-bottom:8px">
+      <h2 id="heatTitle">Cobertura por hora</h2>
+      <div class="legend">
+        <span><span class="sw" style="background:var(--bad-soft)"></span>falta gente</span>
+        <span><span class="sw" style="background:var(--warn-soft)"></span>no limite</span>
+        <span><span class="sw" style="background:var(--ok-soft)"></span>ok</span>
+        <span><span class="sw" style="background:var(--info-soft)"></span>sobra</span>
+      </div>
+    </div>
+    <div class="note" id="heatNote" style="margin-bottom:8px"></div>
+    <div class="scroll" id="heatWrap"></div>
+    <div class="row" id="paramRow" style="margin-top:12px"></div>
+  </section>
+
+  <section class="panel noprint">
+    <div class="head" style="margin-bottom:8px">
+      <h2>Equipe e regime de cada funcionário</h2>
+      <button id="btnAdd" type="button" class="small">+ Adicionar funcionário</button>
+    </div>
+    <div class="note" style="margin-bottom:8px">Os nomes vêm do cadastro do Motel+. Aqui você define cargo, regime e horário de entrada. Mudanças só ficam guardadas depois de "Salvar escala". Funcionários novos no Motel+ entram aqui sozinhos toda semana.</div>
+    <div class="scroll" id="teamWrap"></div>
+  </section>
+
+  <section class="panel noprint" id="adminBox" hidden>
+    <h2 style="margin-bottom:4px">Acessos dos gerentes</h2>
+    <div class="note" style="margin-bottom:10px">Cada gerente cria a própria conta na tela de entrada. Depois marque aqui qual motel ele pode ver e editar.</div>
+    <div class="scroll" id="adminWrap"></div>
+  </section>
+
+  <section class="panel">
+    <details class="rules" id="rules">
+      <summary>Regras usadas pelo gerador</summary>
+      <ul>
+        <li><b>12x36:</b> 12h de permanência com 1h de intervalo (11h trabalhadas) e 36h de folga. Não pode emendar dois turnos nem fazer hora extra; domingos e feriados já estão compensados pelo próprio regime (art. 59-A da CLT). <span class="src">Minuta ACT, cláusula 3ª; CCT, cláusula 33ª.</span></li>
+        <li><b>5x2:</b> a partir de 15/12/2026, 42h semanais: 8h24 trabalhadas + 1h de intervalo (9h24 na empresa). A partir de 15/12/2027, 40h: 8h + 1h. Duas folgas por semana em rodízio. Jornada noturna de 7h com 1h de intervalo (ex.: 00h às 07h). <span class="src">Minuta ACT, cláusula 5ª.</span></li>
+        <li><b>6x1:</b> com 42h fica 7h por dia + 1h de intervalo. Pelo texto aprovado da PEC 221/2019, um regime diferente do 5x2 só vale com acordo ou convenção coletiva e precisa garantir, na média do mês, duas folgas por semana, com pelo menos uma dentro de cada semana. O 6x1 puro não atende isso, então o gerador sempre mostra um alerta. <span class="src">Resumo PEC 221/2019 (Mattos Neves Advocacia).</span></li>
+        <li><b>Domingos:</b> mulheres folgam pelo menos um domingo a cada 15 dias. Homens folgam pelo menos um domingo a cada 3 semanas (critério da Lei 10.101/2000, art. 6º, citada na minuta). Vale para 5x2 e 6x1. <span class="src">Minuta ACT, cláusula 5ª, "g"; cláusula 6ª.</span></li>
+        <li><b>Descanso semanal:</b> no máximo 6 dias seguidos de trabalho. O horário de entrada de cada pessoa é fixo no mês, então o intervalo de 11h entre jornadas fica garantido.</li>
+        <li><b>Feriados (5x2 e 6x1):</b> feriado trabalhado vira folga compensatória em até 30 dias ou pagamento em dobro (100%), e não entra no banco de horas. <span class="src">Minuta ACT, cláusula 6ª; CCT, cláusulas 11ª e 38ª.</span></li>
+        <li><b>Necessidade de camareiras:</b> suítes que ficam sujas por hora (média das últimas 4 semanas no Motel+) × minutos por limpeza ÷ (60 × aproveitamento). O aproveitamento desconta deslocamento, pausas e picos dentro da hora. Os parâmetros podem ser ajustados embaixo do mapa de cobertura.</li>
+      </ul>
+      <p class="note" style="margin-top:10px">O gerador organiza e confere a escala. Ele não substitui a conferência do contador ou do jurídico, principalmente no 6x1 e no início da fase de 42h.</p>
+    </details>
+  </section>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+
+const MOTEIS = [
+  {id:"sfera", nome:"Sfera Motel", server:"MotelMais- Sfera Motel"},
+  {id:"rio", nome:"Rio Motel", server:"MotelMais- Rio Motel"},
+  {id:"real", nome:"Pousada Real", server:"MotelMais- Real Pousada"},
+  {id:"eden", nome:"Jardim do Éden", server:"MotelMais - Eden Pousada"}
+];
+const CARGOS = [
+  {id:"camareira", nome:"Camareiras"},
+  {id:"recepcao", nome:"Recepcionistas"},
+  {id:"asg", nome:"Aux. Serviços Gerais"},
+  {id:"lavanderia", nome:"Aux. Lavanderia"},
+  {id:"outros", nome:"Outros (definir cargo)"}
+];
+const CARGO_NOME1 = {camareira:"Camareira", recepcao:"Recepcionista", asg:"Aux. Serv. Gerais", lavanderia:"Aux. Lavanderia", outros:"Outros"};
+const REGIMES = {"12x36":"12x36", "5x2":"5x2", "6x1":"6x1"};
+const DOWS = ["seg","ter","qua","qui","sex","sab","dom"];
+const DOW_NOME = ["Segunda","Terça","Quarta","Quinta","Sexta","Sábado","Domingo"];
+const DOW_1 = ["S","T","Q","Q","S","S","D"];
+const MES_NOME = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+
+const FERIADOS = {
+  "2026-11-02":"Finados","2026-11-15":"Proclamação da República","2026-11-20":"Consciência Negra",
+  "2026-12-08":"N. Sra. da Conceição","2026-12-25":"Natal",
+  "2027-01-01":"Confraternização Universal","2027-02-08":"Carnaval","2027-02-09":"Carnaval","2027-02-10":"Quarta de Cinzas (até 12h)",
+  "2027-03-26":"Paixão de Cristo","2027-04-21":"Tiradentes","2027-05-01":"Dia do Trabalhador",
+  "2027-05-27":"Corpus Christi (previsto)","2027-09-05":"Elevação do Amazonas (previsto)","2027-09-07":"Independência (previsto)",
+  "2027-10-12":"N. Sra. Aparecida (previsto)","2027-10-24":"Aniversário de Manaus (previsto)","2027-11-02":"Finados (previsto)",
+  "2027-11-15":"Proclamação da República (previsto)","2027-11-20":"Consciência Negra (previsto)","2027-12-08":"N. Sra. da Conceição (previsto)","2027-12-25":"Natal (previsto)"
+};
+
+/* ---------- equipe inicial (cadastro do Motel+ de cada motel) ---------- */
+function p(id,nome,cargo,sexo,regime,inicio,grupo){return {id,nome,cargo,sexo,regime,inicio,grupo:grupo||"A",ativo:true};}
+
+const SEED_EQUIPE = {
+  sfera:[
+    p("m45","Beatriz","camareira","F","12x36","07:00","A"),
+    p("m41","Luiz Henrique","camareira","M","12x36","07:00","A"),
+    p("m48","Maria Diana","camareira","F","12x36","07:00","B"),
+    p("m50","Denira","camareira","F","12x36","07:00","B"),
+    p("m31","Ana Carla","camareira","F","12x36","19:00","A"),
+    p("m21","Rosa","camareira","F","12x36","19:00","A"),
+    p("m46","Esterfania","camareira","F","12x36","19:00","B"),
+    p("m30","Elyan","camareira","F","12x36","19:00","B"),
+    p("m8","Lucas","camareira","M","5x2","06:00"),
+    p("m47","Érica","camareira","F","5x2","14:00"),
+    p("m51","Rayanne","camareira","F","5x2","14:00"),
+    p("m52","Salete","recepcao","F","12x36","07:00","A"),
+    p("m53","Ellem","outros","F","5x2","08:00"),
+    p("m49","Fabíola","outros","F","5x2","08:00")
+  ]
+};
+const DEFAULT_PARAMS = {
+  minLimpeza:15, aproveitamento:70, minCamareiras:1,
+  minPorCargo:{recepcao:{qtd:1,de:0,ate:24}, asg:{qtd:1,de:7,ate:19}, lavanderia:{qtd:1,de:7,ate:17}, outros:{qtd:0,de:0,ate:24}},
+  noturno5x2Perm:7
+};
+
+/* ---------- estado ---------- */
+const S = {
+  motel:"sfera", ym:"2026-12", cargo:"camareira", fase:"auto",
+  equipe:[], params:clone(DEFAULT_PARAMS), ajustes:{}, demanda:null,
+  db:null, mcp:null, dirty:false, savedAt:null, loading:false
+};
+function clone(o){return JSON.parse(JSON.stringify(o));}
+const $ = id => document.getElementById(id);
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("on");clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove("on"),3200);}
+
+/* ---------- datas (dia 0 = 01/01/2026, quinta) ---------- */
+const BASE = Date.UTC(2026,0,1);
+function dayNum(y,m,d){return Math.round((Date.UTC(y,m,d)-BASE)/864e5);}
+function fromNum(n){const d=new Date(BASE+n*864e5);return {y:d.getUTCFullYear(),m:d.getUTCMonth(),d:d.getUTCDate()};}
+function iso(n){const o=fromNum(n);return o.y+"-"+String(o.m+1).padStart(2,"0")+"-"+String(o.d).padStart(2,"0");}
+function dow(n){return ((n+3)%7+7)%7;}            /* 0 = segunda */
+function week(n){return Math.floor((n+3)/7);}       /* semanas começam na segunda */
+function monthRange(ym){const [y,m]=ym.split("-").map(Number);const a=dayNum(y,m-1,1);const b=dayNum(y,m,1)-1;return {a,b,y,m:m-1};}
+function hm(h){const hh=Math.floor(h+1e-9)%24, mm=Math.round((h-Math.floor(h+1e-9))*60);return String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0");}
+function parseHM(s){const [a,b]=(s||"07:00").split(":").map(Number);return a+(b||0)/60;}
+
+/* ---------- regras de jornada ---------- */
+function faseDia(n){
+  if(S.fase!=="auto") return Number(S.fase);
+  const s=iso(n);
+  if(s<"2026-12-15") return 44;
+  if(s<"2027-12-15") return 42;
+  return 40;
+}
+function isNoturno(e){const h=parseHM(e.inicio);return h>=21||h<4;}
+function jornada(e,n){
+  const f=faseDia(n);
+  if(e.regime==="12x36") return {trab:11, perm:12};
+  if(e.regime==="5x2"){
+    if(isNoturno(e) && f<=42){const perm=S.params.noturno5x2Perm||7;return {trab:perm-1, perm};}
+    const t=f/5; return {trab:t, perm:t+1};
+  }
+  const t=f/6; return {trab:t, perm:t+1};
+}
+
+/* ---------- demanda ---------- */
+function demandaAtual(){ return S.demanda; }
+function needCamareira(d,h){
+  const D=demandaAtual(); const P=S.params;
+  if(!D) return P.minCamareiras;
+  const suj=D.dem[DOWS[d]][h];
+  const v=Math.ceil(suj*P.minLimpeza/(60*(P.aproveitamento/100))-1e-9);
+  return Math.max(P.minCamareiras, v);
+}
+function needMatrix(cargo){
+  const M=[];
+  for(let d=0;d<7;d++){M.push([]);for(let h=0;h<24;h++){
+    if(cargo==="camareira") M[d].push(needCamareira(d,h));
+    else {const r=S.params.minPorCargo[cargo]||{qtd:0,de:0,ate:24};M[d].push(h>=r.de&&h<r.ate?r.qtd:0);}
+  }}
+  return M;
+}
+
+/* ---------- geração das folgas ---------- */
+/* horas (dia relativo, hora) que um turno iniciado no dia n cobre */
+function shiftCells(e,n){
+  const st=parseHM(e.inicio), j=jornada(e,n), cells=[];
+  const startH=Math.floor(st), endH=Math.ceil(st+j.perm-1e-9);
+  for(let h=startH;h<endH;h++) cells.push([n+Math.floor(h/24), h%24]);
+  return cells;
+}
+function gerar(cargo, ym){
+  const R=monthRange(ym);
+  const wa=week(R.a)*7-3, wb=week(R.b)*7-3+6;           /* semanas inteiras (seg..dom) que cobrem o mês */
+  const lo=wa-1, hi=wb+1;
+  const team=S.equipe.filter(e=>e.ativo&&e.cargo===cargo);
+  const need=needMatrix(cargo);
+  const cov={}; const key=(n,h)=>n+"|"+h;
+  const add=(e,n,s)=>{for(const [dn,h] of shiftCells(e,n)) cov[key(dn,h)]=(cov[key(dn,h)]||0)+s;};
+  const plan={};  /* plan[id][n] = "T" | "F" */
+  for(const e of team){plan[e.id]={};}
+  /* 12x36: dias alternados, grupo A nos dias pares */
+  for(const e of team.filter(e=>e.regime==="12x36")){
+    for(let n=lo;n<=hi;n++){const work=((n%2)+2)%2===(e.grupo==="A"?0:1);plan[e.id][n]=work?"T":"F";if(work) add(e,n,1);}
+  }
+  const rot=team.filter(e=>e.regime!=="12x36");
+  /* começa com todos trabalhando e tira as folgas onde sobra mais gente */
+  for(const e of rot) for(let n=lo;n<=hi;n++){ if(n===lo){plan[e.id][n]="F";continue;} plan[e.id][n]="T";add(e,n,1);}
+  const prevF={}; rot.forEach(e=>prevF[e.id]=wa-1);
+  const surplus=(e,n)=>{let s=0;for(const [dn,h] of shiftCells(e,n)) s+=(cov[key(dn,h)]||0)-need[dow(dn)][h];return s;};
+  rot.forEach((e,i)=>{e._ord=i;});
+  for(let ws=wa; ws<=wb; ws+=7){
+    const wk=week(ws);
+    for(const e of rot){
+      const nF=e.regime==="5x2"?2:1;
+      const period=e.sexo==="F"?2:3;
+      const sundayForced=((wk+e._ord)%period)===0;
+      const chosen=[];
+      const days=[0,1,2,3,4,5,6].map(k=>ws+k);
+      const pick=(cands)=>{let best=null,bs=-1e9;for(const n of cands){const s=surplus(e,n)+ (n===ws+6?0.01:0);if(s>bs){bs=s;best=n;}}return best;};
+      if(sundayForced){
+        const sun=ws+6;
+        if(nF===2){
+          const c1=days.filter(n=>n<sun&&n<=prevF[e.id]+7);
+          const f1=pick(c1.length?c1:[ws]); chosen.push(f1,sun);
+        } else {
+          if(sun<=prevF[e.id]+7) chosen.push(sun);
+          else chosen.push(pick(days.filter(n=>n<=prevF[e.id]+7)));
+        }
+      } else {
+        const c1=days.filter(n=>n<=prevF[e.id]+7 && n!==ws+6);
+        const f1=pick(c1.length?c1:[ws]); chosen.push(f1);
+        if(nF===2){
+          const c2=days.filter(n=>n!==f1 && n!==ws+6);
+          chosen.push(pick(c2));
+        }
+      }
+      for(const n of chosen){plan[e.id][n]="F";add(e,n,-1);}
+      prevF[e.id]=Math.max(...chosen);
+    }
+  }
+  return {plan, lo, hi};
+}
+
+/* ---------- escala final (geração + ajustes manuais) ---------- */
+function escala(cargo){
+  const g=gerar(cargo,S.ym);
+  const team=S.equipe.filter(e=>e.ativo&&e.cargo===cargo);
+  const fin={};
+  for(const e of team){fin[e.id]={};for(let n=g.lo;n<=g.hi;n++){const k=e.id+"|"+iso(n);const a=S.ajustes[k];fin[e.id][n]={v:a||g.plan[e.id][n],man:!!a};}}
+  return {team, fin, lo:g.lo, hi:g.hi};
+}
+
+/* ---------- validação ---------- */
+function validar(E){
+  const R=monthRange(S.ym); const out=[];
+  for(const e of E.team){
+    const F=E.fin[e.id]; const bad=new Set();
+    const isW=n=>F[n]&&F[n].v==="T";
+    /* dias seguidos */
+    let run=0;
+    for(let n=E.lo;n<=E.hi;n++){
+      if(isW(n)){run++; if(run===7 && n>=R.a && n<=R.b+6){out.push({lv:"bad",e,msg:`7º dia seguido de trabalho em ${fmtD(n)}. Precisa de uma folga antes.`});bad.add(n);}}
+      else run=0;
+    }
+    if(e.regime==="12x36"){
+      for(let n=R.a;n<=R.b;n++) if(isW(n)&&isW(n-1)){out.push({lv:"bad",e,msg:`Dois turnos de 12h seguidos (${fmtD(n-1)} e ${fmtD(n)}). No 12x36 não pode emendar turno.`});bad.add(n);}
+    } else {
+      /* folgas e horas por semana */
+      for(let ws=week(R.a)*7-3; ws<=R.b; ws+=7){
+        let folgas=0,horas=0; for(let k=0;k<7;k++){const n=ws+k;const c=F[n];if(!c)continue;if(c.v!=="T")folgas++;else horas+=jornada(e,n).trab;}
+        const lim=Math.max(...[0,1,2,3,4,5,6].map(k=>faseDia(ws+k)));
+        const minF=e.regime==="5x2"?2:1;
+        if(folgas<minF) out.push({lv:"bad",e,msg:`Semana de ${fmtD(ws)}: ${folgas} folga(s), o ${e.regime} exige ${minF}.`});
+        if(horas>lim+0.05) out.push({lv:"bad",e,msg:`Semana de ${fmtD(ws)}: ${fmtH(horas)} trabalhadas, acima do limite de ${lim}h.`});
+      }
+      /* domingos */
+      const suns=[];for(let n=R.a;n<=R.b;n++) if(dow(n)===6) suns.push(n);
+      const per=e.sexo==="F"?2:3;
+      const sunsAll=[];for(let n=E.lo;n<=E.hi;n++) if(dow(n)===6) sunsAll.push(n);
+      for(let i=0;i+per<=sunsAll.length;i++){
+        const win=sunsAll.slice(i,i+per);
+        if(!win.some(n=>suns.includes(n))) continue;
+        if(win.every(n=>isW(n))){
+          out.push({lv:e.sexo==="F"?"bad":"warn",e,msg:e.sexo==="F"?`Sem folga em domingo de ${fmtD(win[0])} a ${fmtD(win[win.length-1])}. Mulher precisa folgar um domingo a cada 15 dias.`:`Sem folga em domingo por 3 semanas seguidas (${fmtD(win[0])} a ${fmtD(win[win.length-1])}).`});
+          win.forEach(n=>bad.add(n)); break;
+        }
+      }
+      /* feriados */
+      for(let n=R.a;n<=R.b;n++) if(FERIADOS[iso(n)]&&isW(n)) out.push({lv:"info",e,msg:`Trabalha no feriado ${fmtD(n)} (${FERIADOS[iso(n)]}): dar folga em até 30 dias ou pagar em dobro.`});
+      if(e.regime==="6x1" && faseDia(R.b)<44) out.push({lv:"warn",e,msg:`6x1 na fase de ${faseDia(R.b)}h: só vale com acordo coletivo e precisa de média de 2 folgas por semana no mês. Confirmar com o contador.`});
+    }
+    e._bad=bad;
+  }
+  const ord={bad:0,warn:1,info:2}; out.sort((a,b)=>ord[a.lv]-ord[b.lv]);
+  return out;
+}
+function fmtD(n){const o=fromNum(n);return String(o.d).padStart(2,"0")+"/"+String(o.m+1).padStart(2,"0");}
+function fmtH(h){const H=Math.floor(h+1e-9),M=Math.round((h-H)*60);return H+"h"+(M?String(M).padStart(2,"0"):"");}
+
+/* ---------- cobertura x necessidade ---------- */
+function cobertura(E,cargo){
+  const R=monthRange(S.ym); const need=needMatrix(cargo);
+  const cov={}; const key=(n,h)=>n+"|"+h;
+  for(const e of E.team) for(let n=E.lo;n<=E.hi;n++) if(E.fin[e.id][n].v==="T") for(const [dn,h] of shiftCells(e,n)) cov[key(dn,h)]=(cov[key(dn,h)]||0)+1;
+  const sum=[...Array(7)].map(()=>Array(24).fill(0)), cnt=Array(7).fill(0);
+  for(let n=R.a;n<=R.b;n++){const d=dow(n);cnt[d]++;for(let h=0;h<24;h++) sum[d][h]+=cov[key(n,h)]||0;}
+  const avg=sum.map((r,d)=>r.map(v=>cnt[d]?v/cnt[d]:0));
+  let minByDay=[...Array(7)].map(()=>Array(24).fill(99));
+  for(let n=R.a;n<=R.b;n++){const d=dow(n);for(let h=0;h<24;h++) minByDay[d][h]=Math.min(minByDay[d][h],cov[key(n,h)]||0);}
+  return {avg, need, minByDay};
+}
+function sugestoes(C,cargo){
+  const D=demandaAtual(); const out=[];
+  for(let d=0;d<7;d++){
+    let h=0;
+    while(h<24){
+      const gap=C.need[d][h]-C.avg[d][h];
+      if(C.need[d][h]>0 && gap>0.25){
+        let h2=h, mx=0, wt=[];
+        while(h2<24 && C.need[d][h2]-C.avg[d][h2]>0.25){mx=Math.max(mx,C.need[d][h2]-C.avg[d][h2]); if(D&&cargo==="camareira") wt.push(D.wait[DOWS[d]][h2]); h2++;}
+        const n=Math.ceil(mx-0.25);
+        const w=wt.length?Math.round(wt.reduce((a,b)=>a+b,0)/wt.length):null;
+        out.push({tipo:"falta",d,h1:h,h2,n,w});
+        h=h2;
+      } else h++;
+    }
+    h=0;
+    while(h<24){
+      const sob=C.avg[d][h]-C.need[d][h];
+      if(sob>=1.5 && C.need[d][h]>=0){
+        let h2=h,mn=99;while(h2<24&&C.avg[d][h2]-C.need[d][h2]>=1.5){mn=Math.min(mn,C.avg[d][h2]-C.need[d][h2]);h2++;}
+        if(h2-h>=3) out.push({tipo:"sobra",d,h1:h,h2,n:Math.floor(mn)});
+        h=h2;
+      } else h++;
+    }
+  }
+  return out;
+}
+
+/* ---------- render ---------- */
+function render(){
+  const R=monthRange(S.ym);
+  const E=escala(S.cargo);
+  const al=validar(E);
+  renderFase(R); renderTabs(); renderKpis(E,al); renderGrid(E,R); renderAlerts(al);
+  const C=cobertura(E,S.cargo); renderHeat(C); renderSugs(C); renderParams(); renderTeam(); renderStatus();
+}
+function renderFase(R){
+  const f1=faseDia(R.a), f2=faseDia(R.b);
+  const mes=MES_NOME[R.m]+"/"+R.y;
+  let h=`<span class="pill acc">${esc(mes)}</span>`;
+  if(f1!==f2) h+=`<span>Dias 1 a 14: <b>${f1}h</b> semanais. A partir de 15/${String(R.m+1).padStart(2,"0")}: <b>${f2}h</b> semanais (5x2 com 8h24 + 1h de intervalo).</span>`;
+  else h+=`<span>Carga semanal no mês: <b>${f1}h</b>${f1===42?" (5x2 com 8h24 + 1h de intervalo)":f1===40?" (5x2 com 8h + 1h de intervalo)":""}.</span>`;
+  if(S.fase!=="auto") h+=`<span class="pill warn">carga escolhida manualmente</span>`;
+  $("faseInfo").innerHTML=h;
+}
+function renderTabs(){
+  $("tabs").innerHTML=CARGOS.map(c=>{const n=S.equipe.filter(e=>e.ativo&&e.cargo===c.id).length;return `<button class="tab" type="button" role="tab" aria-selected="${c.id===S.cargo}" data-cargo="${c.id}">${esc(c.nome)}<span class="n">${n}</span></button>`;}).join("");
+}
+function renderKpis(E,al){
+  const R=monthRange(S.ym);
+  let horas=0; for(const e of E.team) for(let n=R.a;n<=R.b;n++) if(E.fin[e.id][n].v==="T") horas+=jornada(e,n).trab;
+  const nb=al.filter(a=>a.lv==="bad").length, nw=al.filter(a=>a.lv==="warn").length;
+  const reg={}; E.team.forEach(e=>reg[e.regime]=(reg[e.regime]||0)+1);
+  $("kpis").innerHTML=`
+   <div class="kpi"><div class="v">${E.team.length}</div><div class="l">${esc(CARGOS.find(c=>c.id===S.cargo).nome.toLowerCase())} na escala</div></div>
+   <div class="kpi"><div class="v">${Object.entries(reg).map(([k,v])=>v+" "+k).join(" · ")||"—"}</div><div class="l">regimes</div></div>
+   <div class="kpi"><div class="v">${Math.round(horas)}h</div><div class="l">horas trabalhadas no mês</div></div>
+   <div class="kpi"><div class="v" style="color:${nb?"var(--bad)":"var(--ok)"}">${nb}</div><div class="l">erros de regra</div></div>
+   <div class="kpi"><div class="v" style="color:${nw?"var(--warn)":"var(--ok)"}">${nw}</div><div class="l">avisos</div></div>`;
+}
+function cellLabel(e,c){
+  if(c.v==="F") return "F"; if(c.v==="X") return "FE";
+  return e.inicio.slice(0,2);
+}
+function renderGrid(E,R){
+  $("gridTitle").textContent=`Escala de ${CARGOS.find(c=>c.id===S.cargo).nome.toLowerCase()} · ${MES_NOME[R.m]} de ${R.y}`;
+  if(!E.team.length){
+    const extra = S.cargo==="asg"||S.cargo==="lavanderia" ? " No Motel+ deste motel só existem os cargos Camareira, Recepcionista e Outros. Mude o cargo de alguém na tabela Equipe ou adicione um funcionário." : " Adicione ou mude o cargo de alguém na tabela Equipe.";
+    const vazio = !S.equipe.length ? " Os funcionários deste motel entram na próxima atualização semanal do Motel+, ou adicione na tabela Equipe." : extra;
+    $("gridWrap").innerHTML=`<div class="empty">Ninguém com este cargo ainda.${vazio}</div>`; return;
+  }
+  let h=`<table class="esc"><thead><tr><th class="nm">Funcionário</th>`;
+  for(let n=R.a;n<=R.b;n++){const o=fromNum(n),d=dow(n),fer=FERIADOS[iso(n)];h+=`<th class="${d===6?"dom":""} ${fer?"fer":""}" title="${fer?esc(fer):""}">${DOW_1[d]}<br>${o.d}${fer?"*":""}</th>`;}
+  h+=`<th>Dias</th><th>Horas</th><th>Dom. folga</th></tr></thead><tbody>`;
+  for(const e of E.team){
+    const j=jornada(e,R.b);
+    const fimH=parseHM(e.inicio)+j.perm;
+    const turno=`${e.regime}${e.regime==="12x36"?" "+e.grupo:""} · ${e.inicio}–${hm(fimH)}`;
+    h+=`<tr><th class="nm">${esc(e.nome)}<span class="r">${esc(turno)}</span></th>`;
+    let dias=0,horas=0,domF=0;
+    for(let n=R.a;n<=R.b;n++){
+      const c=E.fin[e.id][n]; const d=dow(n);
+      if(c.v==="T"){dias++;horas+=jornada(e,n).trab;} else if(d===6) domF++;
+      const cls=["c",c.v==="T"?"w":c.v==="F"?"f":"x",d===6?"dom":"",c.man?"man":"",e._bad&&e._bad.has(n)?"err":""].join(" ");
+      h+=`<td class="${cls}" data-e="${e.id}" data-n="${n}" tabindex="0" title="${esc(e.nome)} · ${fmtD(n)} · ${c.v==="T"?"trabalho":c.v==="F"?"folga":"férias/afastamento"}${c.man?" (ajuste manual)":""}">${cellLabel(e,c)}</td>`;
+    }
+    h+=`<td class="sum">${dias}</td><td class="sum">${fmtH(horas)}</td><td class="sum">${domF}</td></tr>`;
+  }
+  h+=`</tbody></table>`;
+  const fer=[];for(let n=R.a;n<=R.b;n++) if(FERIADOS[iso(n)]) fer.push(`${fmtD(n)} ${FERIADOS[iso(n)]}`);
+  if(fer.length) h+=`<div class="note" style="margin-top:8px">* Feriados: ${esc(fer.join(" · "))}</div>`;
+  $("gridWrap").innerHTML=h;
+}
+function renderAlerts(al){
+  if(!al.length){$("alerts").innerHTML=`<div class="al info"><span class="pill ok">ok</span><span>Nenhum problema encontrado nas regras para este cargo.</span></div>`;return;}
+  const lab={bad:"erro",warn:"aviso",info:"atenção"}, cls={bad:"bad",warn:"warn",info:"info"};
+  $("alerts").innerHTML=al.map(a=>`<div class="al ${a.lv}"><span class="pill ${cls[a.lv]}">${lab[a.lv]}</span><span><span class="who">${esc(a.e.nome)}:</span> ${esc(a.msg)}</span></div>`).join("");
+}
+function renderHeat(C){
+  const isCam=S.cargo==="camareira";
+  $("heatTitle").textContent=isCam?"Camareiras escaladas x necessárias, por hora":"Pessoas escaladas x mínimo, por hora";
+  const D=demandaAtual();
+  $("heatNote").innerHTML=isCam
+    ? (D?`Cada célula mostra <b>escaladas / necessárias</b> (média dos dias do mês). Demanda calculada com ${D.limpezas||"as"} limpezas registradas no Motel+ de ${esc(D.periodo)}${D._em?`, atualizada em ${new Date(D._em).toLocaleDateString("pt-BR")}`:""}.`:`Sem dados de demanda para este motel ainda. Eles chegam do Motel+ na próxima atualização semanal.`)
+    : `Cada célula mostra <b>escaladas / mínimo</b> (média dos dias do mês). O mínimo por hora deste cargo é ajustável logo abaixo.`;
+  let h=`<table class="heat"><thead><tr><th class="d"></th>`;
+  for(let x=0;x<24;x++) h+=`<th>${String(x).padStart(2,"0")}</th>`;
+  h+=`</tr></thead><tbody>`;
+  for(let d=0;d<7;d++){
+    h+=`<tr><th class="d">${DOWS[d]}</th>`;
+    for(let x=0;x<24;x++){
+      const a=C.avg[d][x], nd=C.need[d][x];
+      let cls="none";
+      if(nd>0){ if(a<nd-0.25) cls="lack"; else if(a<nd+0.5) cls="tight"; else if(a>=nd+1.5) cls="over"; else cls="good"; }
+      else if(a>0) cls="good";
+      const tip=`${DOW_NOME[d]} ${String(x).padStart(2,"0")}h: ${a.toFixed(1)} escaladas, ${nd} necessárias`+(isCam&&D?`, ${D.dem[DOWS[d]][x]} suítes sujas/h, espera média ${D.wait[DOWS[d]][x]} min`:"");
+      h+=`<td class="${cls}" title="${esc(tip)}">${nd?`${fmtN(a)}/${nd}`:(a?fmtN(a):"·")}</td>`;
+    }
+    h+=`</tr>`;
+  }
+  h+=`</tbody></table>`;
+  $("heatWrap").innerHTML=h;
+}
+function fmtN(v){return Math.abs(v-Math.round(v))<0.05?String(Math.round(v)):v.toFixed(1).replace(".",",");}
+function renderSugs(C){
+  const isCam=S.cargo==="camareira";
+  const sg=sugestoes(C,S.cargo);
+  $("sugTitle").textContent=isCam?"Onde aumentar ou reduzir camareiras":"Onde falta ou sobra gente";
+  const D=demandaAtual();
+  $("sugNote").textContent=isCam&&D?`Com base em ${S.params.minLimpeza} min por limpeza e ${S.params.aproveitamento}% de aproveitamento. A espera é o tempo médio que a suíte ficou suja antes de alguém começar a limpar.`:"";
+  if(!sg.length){$("sugs").innerHTML=`<li><span class="pill ok">ok</span><span>A escala cobre a necessidade em todas as horas.</span></li>`;return;}
+  const faltas=sg.filter(s=>s.tipo==="falta").sort((a,b)=>b.n-a.n||(b.h2-b.h1)-(a.h2-a.h1));
+  const sobras=sg.filter(s=>s.tipo==="sobra");
+  const quem=isCam?"camareira":"pessoa";
+  let h=faltas.map(s=>`<li><span class="pill bad">+${s.n}</span><span><span class="t">${DOW_NOME[s.d]}, ${String(s.h1).padStart(2,"0")}h às ${String(s.h2).padStart(2,"0")}h:</span> precisa de mais ${s.n} ${quem}${s.n>1?"s":""}.${s.w!=null?` Hoje a suíte espera em média ${s.w} min para começar a limpeza.`:""}</span></li>`).join("");
+  h+=sobras.map(s=>`<li><span class="pill info">−${s.n}</span><span><span class="t">${DOW_NOME[s.d]}, ${String(s.h1).padStart(2,"0")}h às ${String(s.h2).padStart(2,"0")}h:</span> sobra${s.n>1?"m":""} ${s.n} ${quem}${s.n>1?"s":""}. Dá para mover uma folga para este período.</span></li>`).join("");
+  $("sugs").innerHTML=h;
+}
+function renderParams(){
+  const P=S.params;
+  if(S.cargo==="camareira"){
+    $("paramRow").innerHTML=`
+      <label class="f" for="pMin">Minutos por limpeza<input type="number" id="pMin" min="5" max="60" value="${P.minLimpeza}"></label>
+      <label class="f" for="pApr">Aproveitamento (%)<input type="number" id="pApr" min="30" max="100" step="5" value="${P.aproveitamento}"></label>
+      <label class="f" for="pMinC">Mínimo por hora<input type="number" id="pMinC" min="0" max="10" value="${P.minCamareiras}"></label>
+      <span class="note" style="max-width:52ch">Tempo medido no Motel+: ${S.demanda?S.demanda.tempoMedio.toString().replace(".",","):"—"} min por limpeza (mediana, sem registros abaixo de 3 ou acima de 90 min). Somei uns minutos de deslocamento.</span>`;
+  } else {
+    const r=P.minPorCargo[S.cargo]||{qtd:0,de:0,ate:24};
+    $("paramRow").innerHTML=`
+      <label class="f" for="pQtd">Mínimo de pessoas<input type="number" id="pQtd" min="0" max="10" value="${r.qtd}"></label>
+      <label class="f" for="pDe">Das (hora)<input type="number" id="pDe" min="0" max="23" value="${r.de}"></label>
+      <label class="f" for="pAte">Até (hora)<input type="number" id="pAte" min="1" max="24" value="${r.ate}"></label>
+      <label class="f" for="pNot">Noturno 5x2 (horas na empresa)<input type="number" id="pNot" min="6" max="9.5" step="0.5" value="${P.noturno5x2Perm}"></label>`;
+  }
+}
+function renderTeam(){
+  const rows=S.equipe.map((e,i)=>`<tr>
+    <td><input type="text" id="t_nome_${i}" data-i="${i}" data-k="nome" value="${esc(e.nome)}" aria-label="Nome"></td>
+    <td><select id="t_cargo_${i}" data-i="${i}" data-k="cargo" aria-label="Cargo">${CARGOS.map(c=>`<option value="${c.id}" ${c.id===e.cargo?"selected":""}>${esc(CARGO_NOME1[c.id])}</option>`).join("")}</select></td>
+    <td><select id="t_sexo_${i}" data-i="${i}" data-k="sexo" aria-label="Sexo"><option value="F" ${e.sexo==="F"?"selected":""}>F</option><option value="M" ${e.sexo==="M"?"selected":""}>M</option></select></td>
+    <td><select id="t_reg_${i}" data-i="${i}" data-k="regime" aria-label="Regime">${Object.keys(REGIMES).map(r=>`<option ${r===e.regime?"selected":""}>${r}</option>`).join("")}</select></td>
+    <td><input type="time" id="t_ini_${i}" data-i="${i}" data-k="inicio" value="${e.inicio}" aria-label="Entrada"></td>
+    <td>${e.regime==="12x36"?`<select id="t_gr_${i}" data-i="${i}" data-k="grupo" aria-label="Grupo"><option value="A" ${e.grupo==="A"?"selected":""}>Grupo A</option><option value="B" ${e.grupo==="B"?"selected":""}>Grupo B</option></select>`:`<span class="note">folgas automáticas</span>`}</td>
+    <td class="note">${(()=>{const n=monthRange(S.ym).b;const j=jornada(e,n);return `${e.inicio}–${hm(parseHM(e.inicio)+j.perm)} · ${fmtH(j.trab)} trab.`;})()}</td>
+    <td><input type="checkbox" id="t_at_${i}" data-i="${i}" data-k="ativo" ${e.ativo?"checked":""} aria-label="Ativo na escala"></td>
+    <td><button class="small" type="button" data-del="${i}" aria-label="Remover ${esc(e.nome)}">Remover</button></td>
+  </tr>`).join("");
+  $("teamWrap").innerHTML=`<table class="team"><thead><tr><th>Nome</th><th>Cargo</th><th>Sexo</th><th>Regime</th><th>Entrada</th><th title="Os grupos A e B se revezam: num dia trabalha o A, no outro o B">Grupo 12x36 (A e B revezam)</th><th>Turno no mês</th><th>Na escala</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function renderStatus(){
+  let s="";
+  if(!S.db) s="";
+  else if(S.dirty) s="<b>Alterações não salvas</b>";
+  else if(S.savedAt) s="Salvo em "+new Date(S.savedAt).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
+  else s="Escala sugerida, ainda não salva";
+  $("saveStatus").innerHTML=s;
+}
+function touch(){S.dirty=true;render();}
+
+/* ---------- eventos ---------- */
+$("selMes").value=S.ym;
+$("selMotel").addEventListener("change",e=>{S.motel=e.target.value;carregar();});
+$("selMes").addEventListener("change",e=>{if(e.target.value){S.ym=e.target.value;carregarMes();}});
+$("selFase").addEventListener("change",e=>{S.fase=e.target.value;render();});
+$("tabs").addEventListener("click",e=>{const b=e.target.closest("[data-cargo]");if(b){S.cargo=b.dataset.cargo;render();}});
+function cycleCell(td){
+  const id=td.dataset.e, n=Number(td.dataset.n), k=id+"|"+iso(n);
+  const cur=S.ajustes[k]; const auto=gerar(S.cargo,S.ym).plan[id][n];
+  const order=["T","F","X"]; let next;
+  if(!cur) next=auto==="T"?"F":"T";
+  else { next=order[order.indexOf(cur)+1]; while(next&&next===auto) next=order[order.indexOf(next)+1]; }
+  if(!next) delete S.ajustes[k]; else S.ajustes[k]=next;
+  touch();
+}
+$("gridWrap").addEventListener("click",e=>{const td=e.target.closest("td.c");if(td)cycleCell(td);});
+$("gridWrap").addEventListener("keydown",e=>{const td=e.target.closest("td.c");if(td&&(e.key==="Enter"||e.key===" ")){e.preventDefault();cycleCell(td);}});
+$("teamWrap").addEventListener("change",e=>{
+  const el=e.target; const i=Number(el.dataset.i), k=el.dataset.k; if(isNaN(i)||!k) return;
+  S.equipe[i][k]= el.type==="checkbox"?el.checked:el.value; touch();
+});
+$("teamWrap").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;const i=Number(b.dataset.del);
+  if(b.dataset.confirm!=="1"){b.dataset.confirm="1";b.textContent="Confirmar";setTimeout(()=>{if(b.isConnected){b.dataset.confirm="";b.textContent="Remover";}},3000);return;}
+  S.equipe.splice(i,1);touch();});
+$("btnAdd").addEventListener("click",()=>{S.equipe.push(p("n"+Date.now().toString(36),"Novo funcionário",S.cargo,"F","5x2","07:00"));touch();});
+$("paramRow").addEventListener("change",e=>{
+  const v=Number(e.target.value); const P=S.params;
+  switch(e.target.id){
+    case "pMin":P.minLimpeza=v;break; case "pApr":P.aproveitamento=v;break; case "pMinC":P.minCamareiras=v;break;
+    case "pQtd":P.minPorCargo[S.cargo].qtd=v;break; case "pDe":P.minPorCargo[S.cargo].de=v;break; case "pAte":P.minPorCargo[S.cargo].ate=v;break;
+    case "pNot":P.noturno5x2Perm=v;break;
+  }
+  touch();
+});
+$("btnRegerar").addEventListener("click",()=>{
+  const R=monthRange(S.ym); const ids=new Set(S.equipe.filter(e=>e.cargo===S.cargo).map(e=>e.id));
+  let n=0; for(const k of Object.keys(S.ajustes)){const [id,d]=k.split("|");if(ids.has(id)&&d.slice(0,7)===S.ym){delete S.ajustes[k];n++;}}
+  toast(n?`${n} ajuste(s) manual(is) removido(s). Folgas recalculadas.`:"Folgas recalculadas."); touch();
+});
+$("btnCopiar").addEventListener("click",async()=>{
+  const R=monthRange(S.ym); const E=escala(S.cargo);
+  const head=["Funcionário","Cargo","Regime","Entrada"]; for(let n=R.a;n<=R.b;n++) head.push(DOW_1[dow(n)]+" "+fromNum(n).d);
+  head.push("Dias","Horas");
+  const lines=[head.join("\t")];
+  for(const e of E.team){
+    const row=[e.nome,CARGO_NOME1[e.cargo],e.regime+(e.regime==="12x36"?" "+e.grupo:""),e.inicio]; let dias=0,horas=0;
+    for(let n=R.a;n<=R.b;n++){const c=E.fin[e.id][n];row.push(c.v==="T"?e.inicio:c.v==="F"?"F":"FE");if(c.v==="T"){dias++;horas+=jornada(e,n).trab;}}
+    row.push(dias,fmtH(horas)); lines.push(row.join("\t"));
+  }
+  const txt=lines.join("\n");
+  try{await navigator.clipboard.writeText(txt);toast("Escala copiada. Cole no Excel ou no Google Planilhas.");$("copyBox").style.display="none";}
+  catch(_){const b=$("copyBox");b.value=txt;b.style.display="block";b.focus();b.select();toast("Selecione o texto abaixo e copie com Ctrl+C.");}
+});
+$("btnSalvar").addEventListener("click",salvar);
+$("btnImprimir").addEventListener("click",()=>window.print());
+
+/* ---------- Supabase ---------- */
+const SB_URL="https://hwfmfjwlymaxmnyuyfyt.supabase.co";
+const SB_KEY="sb_publishable_MSBK5b2uD3UJZguxlhqGIw_IQEO8M56";
+let sb=null, ME=null, ACESSOS=[], ADMIN=false;
+
+async function carregar(){
+  S.loading=true;
+  S.equipe=clone(SEED_EQUIPE[S.motel]||[]); S.params=clone(DEFAULT_PARAMS); S.demanda=null; S.cargo="camareira";
+  const [eq,dm]=await Promise.all([
+    sb.from("equipes").select("lista,params").eq("motel",S.motel).maybeSingle(),
+    sb.from("demanda").select("dados,atualizado_em").eq("motel",S.motel).maybeSingle()
+  ]);
+  if(eq.data&&Array.isArray(eq.data.lista)){S.equipe=clone(eq.data.lista); if(eq.data.params) S.params=Object.assign(clone(DEFAULT_PARAMS),eq.data.params);}
+  if(dm.data&&dm.data.dados&&dm.data.dados.dem){S.demanda=clone(dm.data.dados);S.demanda._em=dm.data.atualizado_em;}
+  await carregarMes();
+}
+async function carregarMes(){
+  const r=await sb.from("escalas").select("ajustes,salvo_em").eq("motel",S.motel).eq("mes",S.ym).maybeSingle();
+  S.ajustes=r.data&&r.data.ajustes?clone(r.data.ajustes):{};
+  S.savedAt=r.data?r.data.salvo_em:null; S.dirty=false; S.loading=false;
+  render();
+}
+let saving=false;
+async function salvar(){
+  if(!ME){toast("Entre na sua conta para salvar.");return;}
+  if(saving) return; saving=true; $("btnSalvar").disabled=true;
+  const now=new Date().toISOString();
+  const mes={}; for(const [k,v] of Object.entries(S.ajustes)){ if(k.split("|")[1].slice(0,7)===S.ym) mes[k]=v; }
+  try{
+    const a=await sb.from("equipes").upsert({motel:S.motel,lista:clone(S.equipe),params:clone(S.params),atualizado_em:now,atualizado_por:ME.id});
+    if(a.error) throw a.error;
+    const b=await sb.from("escalas").upsert({motel:S.motel,mes:S.ym,ajustes:mes,resumo:resumoParaSalvar(),salvo_em:now,salvo_por:ME.id});
+    if(b.error) throw b.error;
+    S.savedAt=now; S.dirty=false; toast("Escala salva."); renderStatus();
+  }catch(e){
+    toast(e&&e.code==="42501"?"Sua conta não tem permissão para editar este motel.":"Não foi possível salvar agora. Confira a internet e tente de novo.");
+  }finally{saving=false;$("btnSalvar").disabled=false;}
+}
+function resumoParaSalvar(){
+  const R=monthRange(S.ym); const out={};
+  for(const c of CARGOS){const E=escala(c.id);for(const e of E.team){const dias=[];for(let n=R.a;n<=R.b;n++)dias.push(E.fin[e.id][n].v);out[e.id]={nome:e.nome,cargo:c.id,regime:e.regime,inicio:e.inicio,dias:dias.join("")};}}
+  return out;
+}
+
+/* ---------- entrada ---------- */
+function lgMsg(t,err){const m=$("lgMsg");m.textContent=t;m.className="msg"+(err?" err":"");}
+$("loginForm").addEventListener("submit",async ev=>{
+  ev.preventDefault();
+  const email=$("lgEmail").value.trim(), password=$("lgSenha").value;
+  lgMsg("Entrando…");
+  const r=await sb.auth.signInWithPassword({email,password});
+  if(r.error){lgMsg(/confirm/i.test(r.error.message)?"Confirme seu e-mail antes de entrar (veja a caixa de entrada).":"E-mail ou senha incorretos.",true);return;}
+  lgMsg(""); await depoisDoLogin(r.data.user);
+});
+$("lgCriar").addEventListener("click",async()=>{
+  const email=$("lgEmail").value.trim(), password=$("lgSenha").value;
+  if(!email||password.length<6){lgMsg("Preencha o e-mail e uma senha com pelo menos 6 caracteres.",true);return;}
+  const r=await sb.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});
+  if(r.error){lgMsg("Não foi possível criar a conta: "+r.error.message,true);return;}
+  if(r.data.session){await depoisDoLogin(r.data.user);return;}
+  lgMsg("Conta criada. Confirme pelo link que chegou no seu e-mail e depois peça ao administrador para liberar o seu motel.");
+});
+$("lgEsqueci").addEventListener("click",async()=>{
+  const email=$("lgEmail").value.trim(); if(!email){lgMsg("Digite seu e-mail primeiro.",true);return;}
+  const r=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+  lgMsg(r.error?"Não foi possível enviar: "+r.error.message:"Enviamos um link para trocar a senha no seu e-mail.",!!r.error);
+});
+async function sair(){await sb.auth.signOut();location.reload();}
+$("btnSair").addEventListener("click",sair);
+$("saSair").addEventListener("click",sair);
+
+async function depoisDoLogin(user){
+  ME=user; S.db=true;
+  const r=await sb.from("acessos").select("motel,papel");
+  ACESSOS=r.data||[];
+  ADMIN=ACESSOS.some(a=>a.motel==="*"&&a.papel==="admin");
+  $("loginBox").hidden=true;
+  if(!ACESSOS.length){$("saEmail").textContent=user.email;$("semAcesso").hidden=false;return;}
+  const permitidos=ADMIN?MOTEIS:MOTEIS.filter(m=>ACESSOS.some(a=>a.motel===m.id));
+  $("selMotel").innerHTML=permitidos.map(m=>`<option value="${m.id}">${esc(m.nome)}</option>`).join("");
+  S.motel=permitidos[0].id; $("selMotel").value=S.motel;
+  $("userEmail").textContent=user.email;
+  $("app").hidden=false;
+  if(ADMIN){$("adminBox").hidden=false;carregarAdmin();}
+  await carregar();
+}
+
+/* ---------- painel de acessos (administrador) ---------- */
+async function carregarAdmin(){
+  const r=await sb.rpc("admin_listar_usuarios");
+  if(r.error){$("adminWrap").innerHTML=`<div class="empty">Não foi possível carregar as contas.</div>`;return;}
+  const linhas=r.data.map(u=>{
+    const isAdm=(u.motels||[]).includes("*");
+    return `<tr><td>${esc(u.email||"")}</td>${MOTEIS.map(m=>`<td>${isAdm?`<span class="note">admin</span>`:`<input type="checkbox" id="ac_${u.id}_${m.id}" data-u="${u.id}" data-m="${m.id}" ${(u.motels||[]).includes(m.id)?"checked":""} aria-label="${esc(m.nome)} para ${esc(u.email||"")}">`}</td>`).join("")}</tr>`;
+  }).join("");
+  $("adminWrap").innerHTML=`<table class="adm"><thead><tr><th>Conta</th>${MOTEIS.map(m=>`<th>${esc(m.nome)}</th>`).join("")}</tr></thead><tbody>${linhas}</tbody></table>`;
+}
+$("adminWrap").addEventListener("change",async e=>{
+  const el=e.target; if(!el.dataset.u) return;
+  el.disabled=true;
+  const r=await sb.rpc("admin_definir_acesso",{p_user:el.dataset.u,p_motel:el.dataset.m,p_ativo:el.checked});
+  el.disabled=false;
+  if(r.error){el.checked=!el.checked;toast("Não foi possível mudar o acesso.");} else toast(el.checked?"Acesso liberado.":"Acesso removido.");
+});
+
+/* ---------- início ---------- */
+(async function init(){
+  if(!window.supabase){document.body.innerHTML='<p style="padding:24px">Não foi possível carregar a página. Confira a internet e atualize.</p>';return;}
+  sb=window.supabase.createClient(SB_URL,SB_KEY);
+  const {data}=await sb.auth.getSession();
+  if(data.session) await depoisDoLogin(data.session.user);
+  else $("loginBox").hidden=false;
+})();
+</script>
+</body>
+</html>
