@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vales (VT e VA) — Gestão dos Motéis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* Controle de VT e VA: faltas por quinzena, recarga da unidade, pedido da Caju por empresa e cadastro dos funcionários. */
+:root{
+  --bg:#f5f4f2; --panel:#ffffff; --ink:#1f1d22; --muted:#6c6772; --line:#e2dfe4;
+  --accent:#8a2b4b; --accent-soft:#f3e6eb;
+  --bad:#c23a2b; --bad-soft:#fbe5e1; --warn:#9a6417; --warn-soft:#fbf0dc;
+  --ok:#2f7d4f; --ok-soft:#e2f2e8; --info:#2d5f99; --info-soft:#e3ecf7;
+  --folga:#ece9ee;
+  --display:"Archivo",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#17151a; --panel:#211e25; --ink:#ece8ef; --muted:#a29ca8; --line:#36313b;
+  --accent:#e07a9e; --accent-soft:#3a2430;
+  --bad:#ff7a6b; --bad-soft:#47231f; --warn:#e9b04f; --warn-soft:#3d3020; --ok:#6cc68f; --ok-soft:#1f3a2a; --info:#7fb0ef; --info-soft:#1f2d42;
+  --folga:#2b2730; color-scheme:dark;}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--body);padding:20px clamp(12px,3vw,32px) 48px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
+h1{font-size:24px;font-weight:800;letter-spacing:-.01em}
+h2{font-size:17px;font-weight:700}
+.sub{color:var(--muted)}
+.wrap{max-width:1300px;margin:0 auto;display:grid;gap:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
+label.f{display:grid;gap:4px;font-size:12px;color:var(--muted);font-weight:500}
+select,input[type=text],input[type=number],input[type=date],input[type=email],input[type=password]{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 8px;min-height:36px}
+button,a.btn{font:inherit;font-weight:600;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 12px;cursor:pointer;min-height:36px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+button:hover,a.btn:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.small{padding:3px 8px;min-height:28px;font-size:12px}
+button:disabled{opacity:.55;cursor:default}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:end}
+.who{font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.who a{color:var(--muted)}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tab{border-radius:999px;padding:6px 16px}
+.tab[aria-selected="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.info{background:var(--info-soft);color:var(--info)}
+.pill.acc{background:var(--accent-soft);color:var(--accent)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;font-variant-numeric:tabular-nums}
+table.t{width:100%;font-size:13px}
+.t th{text-align:left;font-size:11px;color:var(--muted);font-weight:600;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+.t td{padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+.t td.n,.t th.n{text-align:right;white-space:nowrap}
+.t tfoot td{font-weight:700;border-bottom:none;border-top:2px solid var(--line)}
+.t .nm{font-weight:600}
+.t .nm small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+table.cal{font-size:12px;min-width:100%}
+.cal th,.cal td{border-bottom:1px solid var(--line);text-align:center;height:38px;padding:0}
+.cal thead th{font-weight:600;color:var(--muted);font-size:11px;line-height:1.15;min-width:38px}
+.cal thead th.dom{color:var(--accent)}
+.cal th.nm{text-align:left;padding:0 10px 0 0;min-width:190px;position:sticky;left:0;background:var(--panel);z-index:1;font-size:13px;font-weight:600;color:var(--ink)}
+.cal th.nm small{display:block;font-weight:400;color:var(--muted);font-size:11px}
+.cal td.c{border-left:1px solid var(--line);font-family:var(--mono);font-size:11px}
+.cal td.c button{width:100%;height:100%;min-height:38px;justify-content:center;border:0;border-radius:0;background:transparent;font:inherit;font-weight:600;padding:0;color:var(--muted)}
+.cal td.c.w button{color:var(--ok)}
+.cal td.c.f{background:var(--folga);color:var(--muted)}
+.cal td.c.o button{background:var(--bad-soft);color:var(--bad)}
+.cal td.c.o.leve button{background:var(--info-soft);color:var(--info)}
+.cal td.c button:hover{outline:2px solid var(--accent);outline-offset:-2px}
+.cal td.sum{padding:0 8px;white-space:nowrap;border-left:1px solid var(--line);font-size:12px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);align-items:center}
+.sw{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;border:1px solid var(--line)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:2px}
+.kpi .v{font-family:var(--display);font-size:22px;font-weight:800}
+.kpi .l{font-size:12px;color:var(--muted)}
+.kpi.main{background:var(--accent);border-color:var(--accent);color:#fff}
+.kpi.main .l{color:#fff;opacity:.85}
+.kpi.bad .v{color:var(--bad)}
+.note{font-size:12px;color:var(--muted)}
+.empty{padding:18px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);font-size:13px}
+.ed input[type=text]{width:100%;min-width:120px}
+.ed input.cpf{width:130px;font-family:var(--mono)}
+.ed select,.ed input{min-height:32px;padding:3px 6px}
+.ed input[type=date]{width:140px}
+.ed tr.off td{opacity:.55}
+.ed td.chk{text-align:center}
+.ed input[type=checkbox]{width:18px;height:18px}
+.login{max-width:420px;margin:8vh auto;display:grid;gap:12px}
+.login input{width:100%}
+.msg{font-size:13px;min-height:1.2em}
+.msg.err{color:var(--bad)}
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9}
+#toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+@media print{body{background:#fff;padding:0}.noprint{display:none!important}.panel{border:none;padding:0}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+<section class="panel login" id="loginBox" hidden>
+  <h1>Vales (VT e VA)</h1>
+  <div class="sub">Entre com o mesmo e-mail e senha do gerador de escala.</div>
+  <form id="loginForm" class="login" style="margin:0">
+    <label class="f" for="lgEmail">E-mail<input type="email" id="lgEmail" autocomplete="username" required></label>
+    <label class="f" for="lgSenha">Senha<input type="password" id="lgSenha" autocomplete="current-password" minlength="6" required></label>
+    <div class="row"><button class="primary" type="submit">Entrar</button><button type="button" id="lgEsqueci">Esqueci a senha</button></div>
+    <div class="msg" id="lgMsg" role="status"></div>
+  </form>
+</section>
+<section class="panel login" id="semAcesso" hidden>
+  <h2>Conta sem acesso liberado</h2>
+  <div class="sub">Você entrou como <b id="saEmail"></b>, mas ainda não tem nenhuma unidade liberada. Peça ao administrador para liberar e depois atualize a página.</div>
+  <div class="row"><button type="button" id="saSair">Sair</button></div>
+</section>
+
+<div class="wrap" id="app" hidden>
+  <header class="head">
+    <div>
+      <h1>Vales (VT e VA)</h1>
+      <div class="sub">Lance as faltas da quinzena. A recarga da Caju sai só pelos dias trabalhados.</div>
+    </div>
+    <div class="who noprint"><a href="../">Início</a><a href="../escala/">Escala</a><span id="userEmail"></span><button class="small" type="button" id="btnSair">Sair</button></div>
+  </header>
+
+  <nav class="tabs noprint" aria-label="Seções" id="tabs">
+    <button type="button" class="tab" data-tab="faltas" aria-selected="true">Faltas</button>
+    <button type="button" class="tab" data-tab="recarga" aria-selected="false">Recarga da unidade</button>
+    <button type="button" class="tab" data-tab="pedido" aria-selected="false" id="tabPedido" hidden>Pedido Caju</button>
+    <button type="button" class="tab" data-tab="func" aria-selected="false">Funcionários</button>
+  </nav>
+
+  <section class="panel noprint">
+    <div class="row">
+      <label class="f" for="selUnidade" id="lblUnidade">Unidade<select id="selUnidade"></select></label>
+      <label class="f" for="selEmpresa" id="lblEmpresa" hidden>Empresa (CNPJ do pedido)<select id="selEmpresa"></select></label>
+      <label class="f" for="selQ"><span id="lblQ">Quinzena</span><select id="selQ"></select></label>
+      <label class="f" for="selTipo" id="lblTipo">Ao clicar num dia, lançar<select id="selTipo"></select></label>
+    </div>
+  </section>
+
+  <!-- FALTAS -->
+  <section class="panel" id="vFaltas">
+    <div class="head" style="margin-bottom:10px">
+      <h2 id="fTitulo">Faltas</h2>
+      <div class="legend">
+        <span><span class="sw" style="background:var(--panel)"></span>✓ dia de trabalho na escala</span>
+        <span><span class="sw" style="background:var(--folga)"></span>F folga</span>
+        <span><span class="sw" style="background:var(--bad-soft)"></span>FT falta · SU suspensão</span>
+        <span><span class="sw" style="background:var(--info-soft)"></span>AT atestado · FE férias · AF afastamento</span>
+      </div>
+    </div>
+    <div class="scroll" id="fGrid"></div>
+    <p class="note" id="fNota" style="margin:10px 0 0"></p>
+  </section>
+
+  <!-- RECARGA / PEDIDO -->
+  <section class="panel" id="vRecarga" hidden>
+    <div class="head" style="margin-bottom:12px">
+      <h2 id="rTitulo">Recarga</h2>
+      <div class="row noprint" id="rAcoes" hidden>
+        <button type="button" class="primary" id="btnCsv">Baixar planilha da Caju (.csv)</button>
+      </div>
+    </div>
+    <div class="kpis" id="rKpis" style="margin-bottom:14px"></div>
+    <div class="scroll" id="rTabela"></div>
+    <p class="note" id="rNota" style="margin:10px 0 0"></p>
+  </section>
+
+  <!-- FUNCIONÁRIOS -->
+  <section class="panel" id="vFunc" hidden>
+    <div class="head" style="margin-bottom:10px">
+      <h2>Funcionários</h2>
+      <label class="f" style="flex-direction:row;display:flex;gap:6px;align-items:center"><input type="checkbox" id="chkInativos"> Mostrar desligados</label>
+    </div>
+    <p class="note" style="margin:0 0 10px">As mudanças são salvas sozinhas. O CPF tem que estar certo, porque é ele que vai na planilha da Caju. "Escala" liga o funcionário ao nome dele no gerador de escala; sem isso os dias são estimados pelo regime.</p>
+    <div class="scroll" id="funcTabela"></div>
+    <h2 style="margin:20px 0 10px">Cadastrar funcionário</h2>
+    <form id="novoForm" class="row">
+      <label class="f" for="nNome">Nome completo<input type="text" id="nNome" required style="min-width:260px"></label>
+      <label class="f" for="nCpf">CPF<input type="text" id="nCpf" inputmode="numeric" required placeholder="000.000.000-00"></label>
+      <label class="f" for="nCargo">Cargo<input type="text" id="nCargo"></label>
+      <label class="f" for="nAdm">Admissão<input type="date" id="nAdm"></label>
+      <label class="f" for="nRegime">Regime<select id="nRegime"><option>6x1</option><option>5x2</option><option>12x36</option></select></label>
+      <label class="f" for="nEmpresa">Empresa<select id="nEmpresa"></select></label>
+      <button class="primary" type="submit">Cadastrar</button>
+    </form>
+    <div id="cfgBox" hidden style="margin-top:24px">
+      <h2 style="margin-bottom:10px">Valores dos vales (administrador)</h2>
+      <form id="cfgForm" class="row">
+        <label class="f" for="cVt">VT por dia (R$)<input type="number" id="cVt" step="0.01" min="0"></label>
+        <label class="f" for="cVa">VA por dia (R$)<input type="number" id="cVa" step="0.01" min="0"></label>
+        <label class="f" for="cMult">VAs por plantão 12x36<input type="number" id="cMult" step="1" min="1" max="3"></label>
+        <button type="submit">Salvar valores</button>
+      </form>
+    </div>
+  </section>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+const MOTEIS=[{id:"sfera",nome:"Sfera Motel",cnpj:"K.F.C. Ishizaki & Cia Ltda"},{id:"rio",nome:"Rio Motel"},{id:"real",nome:"Pousada Real",cnpj:"K.F.C. Ishizaki Ltda"},{id:"eden",nome:"Jardim do Éden"}];
+const MNOME=Object.fromEntries(MOTEIS.map(m=>[m.id,m.nome]));
+const TIPOS=[{id:"falta",l:"Falta",s:"FT"},{id:"atestado",l:"Atestado",s:"AT",leve:1},{id:"ferias",l:"Férias",s:"FE",leve:1},{id:"afastamento",l:"Afastamento",s:"AF",leve:1},{id:"suspensao",l:"Suspensão",s:"SU"}];
+const TIPO=Object.fromEntries(TIPOS.map(t=>[t.id,t]));
+const DOWL=["D","S","T","Q","Q","S","S"];
+const CAJU_HEAD="CPF;Matricula (opcional);Valor Fixo em Auxilio Alimentacao;Mobilidade;Valor Fixo em Mobilidade;Cultura;Valor Fixo em Cultura;Saude;Valor Fixo em Saude;Educacao;Valor Fixo em Educacao;Home Office;Valor Fixo em Home Office";
+const SB_URL="https://hwfmfjwlymaxmnyuyfyt.supabase.co";
+const SB_KEY="sb_publishable_MSBK5b2uD3UJZguxlhqGIw_IQEO8M56";
+
+const $=id=>document.getElementById(id);
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("on");clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove("on"),3200);}
+const brl=v=>v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const num=v=>v.toFixed(2).replace(".",",");
+const pad=n=>String(n).padStart(2,"0");
+function fmtCpf(c){return c&&c.length===11?c.slice(0,3)+"."+c.slice(3,6)+"."+c.slice(6,9)+"-"+c.slice(9):c||"";}
+function cpfOk(c){if(!/^\d{11}$/.test(c)||/^(\d)\1{10}$/.test(c))return false;for(const t of[9,10]){let s=0;for(let i=0;i<t;i++)s+=Number(c[i])*(t+1-i);const d=(s*10)%11%10;if(d!==Number(c[t]))return false;}return true;}
+
+/* ---------- quinzenas: "AAAA-MM-1" (dias 1 a 15) e "AAAA-MM-2" (16 ao fim) ---------- */
+function lastDay(y,m){return new Date(Date.UTC(y,m,0)).getUTCDate();}
+function qParse(k){const [y,m,h]=k.split("-").map(Number);return {y,m,h};}
+function qDays(k){const {y,m,h}=qParse(k);const a=h===1?1:16,b=h===1?15:lastDay(y,m);const out=[];for(let d=a;d<=b;d++)out.push(y+"-"+pad(m)+"-"+pad(d));return out;}
+function qPrev(k){const {y,m,h}=qParse(k);if(h===2)return y+"-"+pad(m)+"-1";const pm=m===1?12:m-1,py=m===1?y-1:y;return py+"-"+pad(pm)+"-2";}
+function qNext(k){const {y,m,h}=qParse(k);if(h===1)return y+"-"+pad(m)+"-2";const nm=m===12?1:m+1,ny=m===12?y+1:y;return ny+"-"+pad(nm)+"-1";}
+function qLabel(k){const d=qDays(k);const f=s=>s.slice(8)+"/"+s.slice(5,7);return f(d[0])+" a "+f(d[d.length-1])+"/"+d[0].slice(0,4);}
+function qOf(dt){return dt.getFullYear()+"-"+pad(dt.getMonth()+1)+"-"+(dt.getDate()<=15?1:2);}
+function dowOf(iso){return new Date(iso+"T12:00:00Z").getUTCDay();}
+
+/* ---------- estado ---------- */
+const S={tab:"faltas",unidade:null,empresa:null,q:null,tipo:"falta",cfg:{vt_dia:12,va_dia:22.5,va_mult_12x36:2},
+  colab:[],esc:{},oc:{},equipe:[],showOff:false};
+let sb=null,ME=null,ADMIN=false,PERM=[];
+
+/* ---------- dias previstos ---------- */
+function previsto(c,iso){
+  if(c.admissao&&iso<c.admissao) return {p:false,est:false};
+  if(c.desligamento&&iso>c.desligamento) return {p:false,est:false};
+  const r=S.esc[c.motel+"|"+iso.slice(0,7)];
+  if(r&&c.escala_id&&r[c.escala_id]&&r[c.escala_id].dias){const ch=r[c.escala_id].dias[Number(iso.slice(8))-1];return {p:ch==="T",est:false};}
+  const w=dowOf(iso);
+  if(c.regime==="12x36") return {p:Math.floor(new Date(iso+"T12:00:00Z")/864e5)%2===0,est:true};
+  if(c.regime==="5x2") return {p:w>=1&&w<=5,est:true};
+  return {p:w!==0,est:true};
+}
+function diarias(c){
+  const va=c.usa_va?S.cfg.va_dia*(c.regime==="12x36"?S.cfg.va_mult_12x36:1):0;
+  const vt=c.usa_vt?S.cfg.vt_dia:0;
+  return {va,vt};
+}
+function calcRecarga(c,q){
+  const qp=qPrev(q); let prev=0,est=false,desc=0;const motivos=[];
+  for(const d of qDays(q)){const r=previsto(c,d);if(r.p)prev++;if(r.est)est=true;}
+  for(const d of qDays(qp)){const o=S.oc[c.id+"|"+d];if(!o)continue;const r=previsto(c,d);if(r.p){desc++;motivos.push(TIPO[o].s+" "+d.slice(8)+"/"+d.slice(5,7));}}
+  const di=diarias(c);
+  const va=Math.max(0,(prev-desc)*di.va), vt=Math.max(0,(prev-desc)*di.vt);
+  return {prev,desc,est,motivos,va,vt,total:va+vt,descVal:desc*(di.va+di.vt),di};
+}
+
+/* ---------- carregar dados ---------- */
+function mesesEntre(a,b){const out=[];let [y,m]=a.split("-").map(Number);const [by,bm]=b.split("-").map(Number);while(y<by||(y===by&&m<=bm)){out.push(y+"-"+pad(m));m++;if(m>12){m=1;y++;}}return out;}
+async function carregar(col,val,ini,fim){
+  const r=await sb.from("colaboradores").select("*").eq(col,val).order("nome");
+  if(r.error){toast("Não foi possível carregar os funcionários.");return false;}
+  S.colab=r.data; S.esc={}; S.oc={};
+  const unid=[...new Set(S.colab.map(c=>c.motel))];
+  const ids=S.colab.map(c=>c.id);
+  const [e,o]=await Promise.all([
+    unid.length?sb.from("escalas").select("motel,mes,resumo").in("motel",unid).in("mes",mesesEntre(ini.slice(0,7),fim.slice(0,7))):{data:[]},
+    ids.length?sb.from("vales_ocorrencias").select("colaborador_id,data,tipo").in("colaborador_id",ids).gte("data",ini).lte("data",fim):{data:[]}
+  ]);
+  for(const x of e.data||[]) S.esc[x.motel+"|"+x.mes]=x.resumo||{};
+  for(const x of o.data||[]) S.oc[x.colaborador_id+"|"+x.data]=x.tipo;
+  return true;
+}
+async function carregarCfg(){const r=await sb.from("vales_config").select("*").eq("id",1).maybeSingle();if(r.data)S.cfg={vt_dia:Number(r.data.vt_dia),va_dia:Number(r.data.va_dia),va_mult_12x36:Number(r.data.va_mult_12x36)};}
+
+/* ---------- telas ---------- */
+async function render(){
+  for(const b of document.querySelectorAll(".tab")) b.setAttribute("aria-selected",String(b.dataset.tab===S.tab));
+  $("vFaltas").hidden=S.tab!=="faltas"; $("vRecarga").hidden=!(S.tab==="recarga"||S.tab==="pedido"); $("vFunc").hidden=S.tab!=="func";
+  $("lblUnidade").hidden=S.tab==="pedido"; $("lblEmpresa").hidden=S.tab!=="pedido";
+  $("lblTipo").hidden=S.tab!=="faltas"; $("lblQ").parentElement.hidden=S.tab==="func";
+  $("lblQ").textContent=S.tab==="faltas"?"Quinzena das faltas":"Recarga da quinzena";
+  if(S.tab==="faltas") await telaFaltas();
+  else if(S.tab==="recarga") await telaRecarga("motel",S.unidade);
+  else if(S.tab==="pedido") await telaRecarga("empresa",S.empresa);
+  else await telaFunc();
+}
+
+async function telaFaltas(recarregar=true){
+  const dias=qDays(S.q);
+  $("fTitulo").textContent="Faltas de "+qLabel(S.q)+" — "+MNOME[S.unidade];
+  if(recarregar){$("fGrid").innerHTML='<div class="empty">Carregando…</div>';
+    if(!await carregar("motel",S.unidade,dias[0],dias[dias.length-1])) return;}
+  const lista=S.colab.filter(c=>c.ativo&&(c.usa_va||c.usa_vt));
+  if(!lista.length){$("fGrid").innerHTML='<div class="empty">Nenhum funcionário com VT ou VA nesta unidade. Confira a aba Funcionários.</div>';$("fNota").textContent="";return;}
+  let est=false;
+  const head='<tr><th class="nm" scope="col">Funcionário</th>'+dias.map(d=>{const w=dowOf(d);return `<th scope="col" class="${w===0?"dom":""}">${DOWL[w]}<br>${d.slice(8)}</th>`;}).join("")+'<th scope="col">Faltas</th></tr>';
+  const rows=lista.map(c=>{
+    let n=0;
+    const tds=dias.map(d=>{
+      const r=previsto(c,d); if(r.est) est=true;
+      const o=S.oc[c.id+"|"+d];
+      if(o){if(r.p)n++;const t=TIPO[o];return `<td class="c o ${t.leve?"leve":""}"><button type="button" data-c="${c.id}" data-d="${d}" aria-label="${esc(c.nome)}, ${d.slice(8)}: ${t.l}. Clique para tirar">${t.s}</button></td>`;}
+      if(!r.p) return `<td class="c f" title="Folga ou fora do contrato">F</td>`;
+      return `<td class="c w"><button type="button" data-c="${c.id}" data-d="${d}" aria-label="${esc(c.nome)}, ${d.slice(8)}: trabalho. Clique para lançar ${TIPO[S.tipo].l.toLowerCase()}">✓</button></td>`;
+    }).join("");
+    return `<tr><th class="nm" scope="row">${esc(c.nome)}<small>${esc(c.regime)}${c.escala_id?"":" · sem escala ligada"}</small></th>${tds}<td class="sum">${n?`<span class="pill bad">${n}</span>`:"—"}</td></tr>`;
+  }).join("");
+  $("fGrid").innerHTML=`<table class="cal"><thead>${head}</thead><tbody>${rows}</tbody></table>`;
+  $("fNota").textContent=(est?"Alguns dias foram estimados pelo regime, porque a escala do mês ainda não foi salva ou o funcionário não está ligado a ela. ":"")+"Cada dia lançado aqui é descontado da recarga da quinzena seguinte ("+qLabel(qNext(S.q))+").";
+}
+$("fGrid").addEventListener("click",async e=>{
+  const b=e.target.closest("button[data-c]"); if(!b) return;
+  const c=S.colab.find(x=>x.id===b.dataset.c), d=b.dataset.d, k=c.id+"|"+d;
+  b.disabled=true;
+  if(S.oc[k]){
+    const r=await sb.from("vales_ocorrencias").delete().eq("colaborador_id",c.id).eq("data",d);
+    if(r.error){toast("Não foi possível tirar. Tente de novo.");b.disabled=false;return;}
+    delete S.oc[k];
+  } else {
+    const r=await sb.from("vales_ocorrencias").insert({colaborador_id:c.id,motel:c.motel,data:d,tipo:S.tipo,criado_por:ME.id});
+    if(r.error){toast(r.error.code==="42501"?"Sua conta não pode lançar nesta unidade.":"Não foi possível lançar. Tente de novo.");b.disabled=false;return;}
+    S.oc[k]=S.tipo;
+  }
+  const scroll=$("fGrid").scrollLeft; await telaFaltas(false); $("fGrid").scrollLeft=scroll;
+});
+let ULT=[];
+async function telaRecarga(col,val){
+  const q=S.q, qp=qPrev(q), dq=qDays(q), dp=qDays(qp);
+  const titulo=col==="empresa"?"Pedido Caju — "+MNOME[val]+(MOTEIS.find(m=>m.id===val).cnpj?" ("+MOTEIS.find(m=>m.id===val).cnpj+")":""):"Recarga — "+MNOME[val];
+  $("rTitulo").textContent=titulo+" — "+qLabel(q);
+  $("rAcoes").hidden=col!=="empresa";
+  $("rTabela").innerHTML='<div class="empty">Carregando…</div>'; $("rKpis").innerHTML="";
+  if(!await carregar(col,val,dp[0],dq[dq.length-1])) return;
+  const lista=S.colab.filter(c=>c.ativo&&(c.usa_va||c.usa_vt));
+  ULT=lista.map(c=>({c,r:calcRecarga(c,q)}));
+  let tVa=0,tVt=0,tDesc=0,nDesc=0,est=false;
+  const rows=ULT.map(({c,r})=>{
+    tVa+=r.va;tVt+=r.vt;tDesc+=r.descVal;nDesc+=r.desc;if(r.est)est=true;
+    const out=col==="empresa"&&c.motel!==c.empresa?` · trabalha no ${esc(MNOME[c.motel])}`:"";
+    return `<tr><td class="nm">${esc(c.nome)}<small>${esc(c.cargo||"")} · ${esc(c.regime)}${out}</small></td>
+      <td class="n">${r.prev}${r.est?' <span class="pill warn" title="Dias estimados pelo regime">est.</span>':""}</td>
+      <td>${r.desc?`<span class="pill bad">−${r.desc}</span> <span class="note">${esc(r.motivos.join(", "))}</span>`:'<span class="note">—</span>'}</td>
+      <td class="n">${c.usa_va?brl(r.va):'<span class="note">não usa</span>'}</td>
+      <td class="n">${c.usa_vt?brl(r.vt):'<span class="note">não usa</span>'}</td>
+      <td class="n"><b>${brl(r.total)}</b></td></tr>`;
+  }).join("");
+  $("rKpis").innerHTML=`
+    <div class="kpi"><span class="l">Vale-alimentação</span><span class="v">${brl(tVa)}</span></div>
+    <div class="kpi"><span class="l">Vale-transporte (Mobilidade)</span><span class="v">${brl(tVt)}</span></div>
+    <div class="kpi bad"><span class="l">Descontado por ${nDesc} falta(s) de ${qLabel(qp)}</span><span class="v">−${brl(tDesc)}</span></div>
+    <div class="kpi main"><span class="l">Total da recarga</span><span class="v">${brl(tVa+tVt)}</span></div>`;
+  $("rTabela").innerHTML=lista.length?`<table class="t"><thead><tr><th>Funcionário</th><th class="n">Dias na escala</th><th>Desconto (quinzena anterior)</th><th class="n">VA</th><th class="n">VT</th><th class="n">Total</th></tr></thead><tbody>${rows}</tbody>
+    <tfoot><tr><td>${lista.length} funcionários</td><td></td><td></td><td class="n">${brl(tVa)}</td><td class="n">${brl(tVt)}</td><td class="n">${brl(tVa+tVt)}</td></tr></tfoot></table>`:'<div class="empty">Ninguém com VT ou VA aqui.</div>';
+  $("rNota").textContent=`Valores: VT ${brl(S.cfg.vt_dia)} por dia, VA ${brl(S.cfg.va_dia)} por dia (${S.cfg.va_mult_12x36}× no plantão 12x36). Dias de ${qLabel(q)} vêm da escala salva; os descontos são das faltas lançadas em ${qLabel(qp)}.`+(est?" Onde aparece \"est.\", a escala do mês não foi salva ou o funcionário não está ligado a ela, e os dias foram estimados pelo regime.":"");
+}
+$("btnCsv").addEventListener("click",async()=>{
+  const linhas=ULT.filter(x=>x.r.total>0);
+  if(!linhas.length){toast("Nenhum valor para recarregar.");return;}
+  const ruins=linhas.filter(x=>!cpfOk(x.c.cpf));
+  if(ruins.length){toast("CPF inválido: "+ruins.map(x=>x.c.nome).join(", "));return;}
+  const csv=[CAJU_HEAD].concat(linhas.map(x=>[x.c.cpf,"",num(x.r.va),num(x.r.vt),"0","0","0","0","0","0","0","0","0"].join(";"))).join("\r\n")+"\r\n";
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  a.download=`caju-${S.empresa}-${S.q}.csv`;document.body.appendChild(a);a.click();a.remove();
+  const total=linhas.reduce((s,x)=>s+x.r.total,0);
+  const r=await sb.from("vales_pedidos").upsert({empresa:S.empresa,quinzena:S.q,total,gerado_por:ME.id,gerado_em:new Date().toISOString(),
+    linhas:linhas.map(x=>({id:x.c.id,nome:x.c.nome,cpf:x.c.cpf,dias:x.r.prev,desc:x.r.desc,va:x.r.va,vt:x.r.vt}))});
+  toast(r.error?"Planilha baixada, mas o histórico não foi salvo.":"Planilha baixada. Suba o arquivo no Caju em Pedidos por planilha.");
+});
+
+/* ---------- funcionários ---------- */
+async function telaFunc(){
+  $("funcTabela").innerHTML='<div class="empty">Carregando…</div>';
+  const [r,eq]=await Promise.all([sb.from("colaboradores").select("*").eq("motel",S.unidade).order("nome"),sb.from("equipes").select("lista").eq("motel",S.unidade).maybeSingle()]);
+  if(r.error){$("funcTabela").innerHTML='<div class="empty">Não foi possível carregar.</div>';return;}
+  S.colab=r.data; S.equipe=(eq.data&&eq.data.lista)||[];
+  const usados=new Set(S.colab.map(c=>c.escala_id).filter(Boolean));
+  const empOpts=v=>MOTEIS.map(m=>`<option value="${m.id}" ${m.id===v?"selected":""}>${esc(m.nome)}</option>`).join("");
+  const lista=S.colab.filter(c=>S.showOff||c.ativo);
+  const rows=lista.map(c=>{
+    const escOpts='<option value="">— nenhuma —</option>'+S.equipe.map(e=>`<option value="${esc(e.id)}" ${e.id===c.escala_id?"selected":""}>${esc(e.nome)} (${esc(e.regime)})${usados.has(e.id)&&e.id!==c.escala_id?" · já ligado":""}</option>`).join("");
+    const cpfBad=!cpfOk(c.cpf);
+    return `<tr data-id="${c.id}" class="${c.ativo?"":"off"}">
+      <td><input type="text" data-k="nome" value="${esc(c.nome)}" aria-label="Nome"></td>
+      <td><input type="text" class="cpf" data-k="cpf" value="${esc(fmtCpf(c.cpf))}" aria-label="CPF de ${esc(c.nome)}" ${cpfBad?'aria-invalid="true" style="border-color:var(--bad)"':""}></td>
+      <td><select data-k="regime" aria-label="Regime">${["6x1","5x2","12x36"].map(x=>`<option ${x===c.regime?"selected":""}>${x}</option>`).join("")}</select></td>
+      <td><select data-k="escala_id" aria-label="Nome na escala">${escOpts}</select></td>
+      <td class="chk"><input type="checkbox" data-k="usa_va" ${c.usa_va?"checked":""} aria-label="Recebe VA"></td>
+      <td class="chk"><input type="checkbox" data-k="usa_vt" ${c.usa_vt?"checked":""} aria-label="Recebe VT"></td>
+      <td><select data-k="empresa" aria-label="Empresa do pedido" ${ADMIN?"":"disabled"}>${empOpts(c.empresa||c.motel)}</select></td>
+      ${ADMIN?`<td><select data-k="motel" aria-label="Unidade onde trabalha">${empOpts(c.motel)}</select></td>`:""}
+      <td><input type="date" data-k="admissao" value="${c.admissao||""}" aria-label="Admissão"></td>
+      <td><input type="date" data-k="desligamento" value="${c.desligamento||""}" aria-label="Desligamento"></td>
+    </tr>`;
+  }).join("");
+  $("funcTabela").innerHTML=`<table class="t ed"><thead><tr><th>Nome completo</th><th>CPF</th><th>Regime</th><th>Escala</th><th>VA</th><th>VT</th><th>Empresa</th>${ADMIN?"<th>Trabalha no</th>":""}<th>Admissão</th><th>Desligamento</th></tr></thead><tbody>${rows}</tbody></table>`;
+  $("nEmpresa").innerHTML=empOpts(S.unidade);
+  $("cfgBox").hidden=!ADMIN;
+  if(ADMIN){$("cVt").value=S.cfg.vt_dia;$("cVa").value=S.cfg.va_dia;$("cMult").value=S.cfg.va_mult_12x36;}
+}
+$("funcTabela").addEventListener("change",async e=>{
+  const el=e.target, k=el.dataset.k; if(!k) return;
+  const id=el.closest("tr").dataset.id; const c=S.colab.find(x=>x.id===id);
+  let v=el.type==="checkbox"?el.checked:el.value.trim();
+  if(k==="cpf"){v=v.replace(/\D/g,"");if(!cpfOk(v)){toast("CPF inválido. Confira os números.");el.style.borderColor="var(--bad)";return;}}
+  if(k==="nome"&&!v){toast("O nome não pode ficar vazio.");return;}
+  if((k==="admissao"||k==="desligamento"||k==="escala_id")&&!v) v=null;
+  const patch={[k]:v,atualizado_em:new Date().toISOString(),atualizado_por:ME.id};
+  if(k==="desligamento") patch.ativo=!v||v>=new Date().toISOString().slice(0,10);
+  if(k==="escala_id"&&v){const e2=S.equipe.find(x=>x.id===v);if(e2&&e2.regime){patch.regime=e2.regime;}}
+  const r=await sb.from("colaboradores").update(patch).eq("id",id);
+  if(r.error){toast(r.error.code==="23505"?"Esse CPF já está cadastrado.":"Não foi possível salvar.");return;}
+  Object.assign(c,patch); if(k==="cpf") el.value=fmtCpf(v), el.style.borderColor="";
+  if(k==="escala_id"||k==="desligamento"||k==="motel") telaFunc();
+  toast("Salvo.");
+});
+$("chkInativos").addEventListener("change",e=>{S.showOff=e.target.checked;telaFunc();});
+$("novoForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const cpf=$("nCpf").value.replace(/\D/g,"");
+  if(!cpfOk(cpf)){toast("CPF inválido. Confira os números.");return;}
+  const row={motel:S.unidade,empresa:$("nEmpresa").value,nome:$("nNome").value.trim(),cpf,cargo:$("nCargo").value.trim()||null,
+    admissao:$("nAdm").value||null,regime:$("nRegime").value,usa_va:true,usa_vt:false,atualizado_por:ME.id};
+  const r=await sb.from("colaboradores").insert(row);
+  if(r.error){toast(r.error.code==="23505"?"Esse CPF já está cadastrado.":"Não foi possível cadastrar.");return;}
+  e.target.reset(); toast("Funcionário cadastrado. Ligue ele à escala na tabela."); telaFunc();
+});
+$("cfgForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const p={vt_dia:Number($("cVt").value),va_dia:Number($("cVa").value),va_mult_12x36:Number($("cMult").value),atualizado_em:new Date().toISOString()};
+  const r=await sb.from("vales_config").update(p).eq("id",1);
+  if(r.error){toast("Não foi possível salvar os valores.");return;}
+  S.cfg={vt_dia:p.vt_dia,va_dia:p.va_dia,va_mult_12x36:p.va_mult_12x36}; toast("Valores salvos.");
+});
+
+/* ---------- controles ---------- */
+function montarQuinzenas(){
+  const hoje=qOf(new Date()); let k=hoje; for(let i=0;i<4;i++) k=qPrev(k);
+  const opts=[]; for(let i=0;i<8;i++){opts.push(k);k=qNext(k);}
+  const def=S.tab==="faltas"?hoje:qNext(hoje);
+  if(!S.q||!opts.includes(S.q)) S.q=def;
+  $("selQ").innerHTML=opts.map(o=>`<option value="${o}" ${o===S.q?"selected":""}>${qLabel(o)}${o===hoje?" (atual)":""}</option>`).join("");
+}
+$("tabs").addEventListener("click",e=>{
+  const b=e.target.closest(".tab"); if(!b) return;
+  const antes=S.tab; S.tab=b.dataset.tab;
+  const hoje=qOf(new Date());
+  if(antes==="faltas"&&S.tab!=="faltas"&&S.q===hoje) S.q=qNext(hoje);
+  else if(antes!=="faltas"&&S.tab==="faltas"&&S.q===qNext(hoje)) S.q=hoje;
+  montarQuinzenas(); render();
+});
+$("selQ").addEventListener("change",e=>{S.q=e.target.value;render();});
+$("selUnidade").addEventListener("change",e=>{S.unidade=e.target.value;render();});
+$("selEmpresa").addEventListener("change",e=>{S.empresa=e.target.value;render();});
+$("selTipo").innerHTML=TIPOS.map(t=>`<option value="${t.id}">${t.l} (${t.s})</option>`).join("");
+$("selTipo").addEventListener("change",e=>{S.tipo=e.target.value;telaFaltas(false);});
+
+/* ---------- entrada ---------- */
+function lgMsg(t,err){const m=$("lgMsg");m.textContent=t;m.className="msg"+(err?" err":"");}
+$("loginForm").addEventListener("submit",async ev=>{
+  ev.preventDefault(); lgMsg("Entrando…");
+  const r=await sb.auth.signInWithPassword({email:$("lgEmail").value.trim(),password:$("lgSenha").value});
+  if(r.error){lgMsg("E-mail ou senha incorretos.",true);return;}
+  lgMsg(""); await depoisDoLogin(r.data.user);
+});
+$("lgEsqueci").addEventListener("click",async()=>{
+  const email=$("lgEmail").value.trim(); if(!email){lgMsg("Digite seu e-mail primeiro.",true);return;}
+  const r=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+"/escala/"});
+  lgMsg(r.error?"Não foi possível enviar agora.":"Enviamos um link para trocar a senha no seu e-mail.",!!r.error);
+});
+async function sair(){await sb.auth.signOut();location.reload();}
+$("btnSair").addEventListener("click",sair); $("saSair").addEventListener("click",sair);
+
+async function depoisDoLogin(user){
+  ME=user;
+  const r=await sb.from("acessos").select("motel,papel");
+  const ac=r.data||[];
+  ADMIN=ac.some(a=>a.motel==="*"&&a.papel==="admin");
+  $("loginBox").hidden=true;
+  PERM=ADMIN?MOTEIS:MOTEIS.filter(m=>ac.some(a=>a.motel===m.id));
+  if(!PERM.length){$("saEmail").textContent=user.email;$("semAcesso").hidden=false;return;}
+  const opts=PERM.map(m=>`<option value="${m.id}">${esc(m.nome)}</option>`).join("");
+  $("selUnidade").innerHTML=opts; $("selEmpresa").innerHTML=opts;
+  S.unidade=PERM[0].id; S.empresa=PERM[0].id;
+  $("tabPedido").hidden=!ADMIN;
+  $("userEmail").textContent=user.email; $("app").hidden=false;
+  await carregarCfg(); montarQuinzenas(); await render();
+}
+(async function init(){
+  if(!window.supabase){document.body.innerHTML='<p style="padding:24px">Não foi possível carregar a página. Confira a internet e atualize.</p>';return;}
+  sb=window.supabase.createClient(SB_URL,SB_KEY);
+  const {data}=await sb.auth.getSession();
+  if(data.session) await depoisDoLogin(data.session.user); else $("loginBox").hidden=false;
+})();
+</script>
+</body>
+</html>
